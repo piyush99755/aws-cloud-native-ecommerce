@@ -1,23 +1,41 @@
 import logo from './logo.svg';
 import './App.css';
+import { useAuth } from 'react-oidc-context';
 
 function App() {
+  const auth = useAuth();
+
+  const signOutRedirect = () => {
+    const clientId = "1hbjetddcmf4hp5cmpl5tae8l9";
+    const logoutUri = "http://localhost:3000/"; 
+    const cognitoDomain = "https://us-east-1zylluw6ax.auth.us-east-1.amazoncognito.com";
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+
+  }
+
+  if (auth.isLoading){
+    return <div>Loading...</div>;
+  }
+
+  if(auth.error){
+    return <div>Error: {auth.error.message}</div>;
+  }
+
+  if(auth.isAuthenticated){
+    return(
+      <div>
+        <h2>Welcome, {auth.user.profile.email}</h2>
+        <pre>Access Token: {auth.user.access_token}</pre>
+
+        {/* Signout Options*/ }
+        <button onClick={() => auth.removeUser()}>Clear Sessions</button>
+        <button onClick={signOutRedirect}>Sign out</button>
+      </div>
+    );
+  }
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div>
+      <button onClick={()=> auth.signinRedirect()}>Sign in</button>
     </div>
   );
 }
