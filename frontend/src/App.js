@@ -1,6 +1,7 @@
 import logo from './logo.svg';
 import './App.css';
 import { useAuth } from 'react-oidc-context';
+import Products from '../src/components/products';
 
 function App() {
   const auth = useAuth();
@@ -30,6 +31,9 @@ function App() {
         {/* Signout Options*/ }
         <button onClick={() => auth.removeUser()}>Clear Sessions</button>
         <button onClick={signOutRedirect}>Sign out</button>
+
+        {/* Show products only if user is authenticated */}
+          <Products />
       </div>
     );
   }
