@@ -10,6 +10,9 @@ app.use((req,res,next) => {
     console.log("Authorization header:", req.headers.authorization);
     next();
 });
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // Products endpoint
 app.get('/products', (req, res) => {
@@ -26,5 +29,6 @@ const PORT = process.env.PORT || 5000; //important for Elastic Beanstalk
 app.listen(PORT, ()=>{
     console.log(`Server is running on port:${PORT}`);
 });
+
 
 
