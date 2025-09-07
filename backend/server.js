@@ -10,7 +10,7 @@ app.use(express.json());
 // Load DB config from environment
 const { DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT } = process.env;
 
-//  Setup Postgres connection pool
+// Setup Postgres connection pool
 const pool = new Pool({
   host: DB_HOST,
   user: DB_USER,
@@ -21,9 +21,9 @@ const pool = new Pool({
 
 // Test DB connection on startup
 pool.connect()
-  .then(() => console.log("✅ Connected to Postgres"))
+  .then(() => console.log("Connected to Postgres"))
   .catch(err => {
-    console.error(" DB connection failed:", err);
+    console.error("DB connection failed:", err);
     process.exit(1);
   });
 
@@ -34,14 +34,14 @@ app.use((req, res, next) => {
 });
 
 // Health check
-app.get("/", (req, res) => {
-  res.send("App is running ");
+app.get("/health", (req, res) => {
+  res.status(200).send("OK");
 });
 
-// Products endpoint from DB
+// Products endpoint fetching from DB
 app.get("/products", async (req, res) => {
   try {
-    const result = await pool.query("SELECT id, name, price FROM products LIMIT 10");
+    const result = await pool.query("SELECT id, name, price FROM products");
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching products:", err);
@@ -49,30 +49,12 @@ app.get("/products", async (req, res) => {
   }
 });
 
+// Root endpoint
+app.get("/", (req, res) => {
+  res.send("App is running");
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(` Server is running on port: ${PORT}`);
+  console.log(`Server is running on port: ${PORT}`);
 });
-
-app.get('/health', (req, res) => {
-  res.status(200).send('OK');
-});
-
-// Products endpoint
-app.get('/products', (req, res) => {
-  const sampleProducts = [
-    { id: 1, name: 'Product 1', price: 10 },
-    { id: 2, name: 'Product 2', price: 20 },
-  ];
-  res.json(sampleProducts);
-});
-
-
-
-
-app.listen(PORT, ()=>{
-    console.log(`Server is running on port:${PORT}`);
-});
-
-
-
