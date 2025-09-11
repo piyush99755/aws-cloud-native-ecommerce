@@ -5,7 +5,7 @@ console.log("Loaded BASE_URL:", process.env.REACT_APP_BACKEND_URL);
 
 
 export const getProducts = async(token) => {
-  return axios.get(`${BASE_URL}/products`,{
+  return axios.get(`${BASE_URL}/api/products`,{
     headers: {
         Authorization: `Bearer ${token}`
     },
