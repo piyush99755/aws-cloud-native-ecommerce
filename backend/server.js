@@ -4,13 +4,24 @@ require("dotenv").config();
 const { Pool } = require("pg");
 
 const app = express();
-app.use(cors());
+
+// Allowed origins: your frontend
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://d1vf5juqitmm06.cloudfront.net"
+];
+
+app.use(cors({
+  origin: allowedOrigins,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type'], // do not include Authorization for now
+  credentials: true,
+}));
+
 app.use(express.json());
 
-// Load DB config from environment
+// DB setup
 const { DB_HOST, DB_USER, DB_PASS, DB_NAME, DB_PORT } = process.env;
-
-// Setup Postgres connection pool
 const pool = new Pool({
   host: DB_HOST,
   user: DB_USER,
@@ -19,27 +30,21 @@ const pool = new Pool({
   port: DB_PORT || 5432,
 });
 
-// Test DB connection on startup
 pool.connect()
   .then(() => console.log("Connected to Postgres"))
-  .catch(err => {
-    console.error("DB connection failed:", err);
-    process.exit(1);
-  });
+  .catch(err => console.error("DB connection failed:", err));
 
-// Middleware to log requests
+// Log all requests
 app.use((req, res, next) => {
-  console.log("Authorization header:", req.headers.authorization);
+  console.log(`➡️ ${req.method} ${req.path}`);
   next();
 });
 
 // Health check
-app.get("/health", (req, res) => {
-  res.status(200).send("OK");
-});
+app.get("/health", (req, res) => res.status(200).send("OK"));
 
-// Products endpoint fetching from DB
-app.get("/products", async (req, res) => {
+// Products endpoint
+app.get("/api/products", async (req, res) => {
   try {
     const result = await pool.query("SELECT id, name, price FROM products");
     res.json(result.rows);
@@ -50,11 +55,8 @@ app.get("/products", async (req, res) => {
 });
 
 // Root endpoint
-app.get("/", (req, res) => {
-  res.send("App is running");
-});
+app.get("/", (req, res) => res.send("App is running"));
 
+// EB uses process.env.PORT
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port: ${PORT}`);
-});
+app.listen(PORT, "0.0.0.0", () => console.log(`Server is running on port: ${PORT}`));
