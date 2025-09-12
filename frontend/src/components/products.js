@@ -3,13 +3,17 @@ import { useAuth } from 'react-oidc-context';
 import { getProducts } from '../api/productService';
 
 function Products() {
-    const auth = useAuth(); // <--- Add this
+    const auth = useAuth(); 
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+   
+
     useEffect(() => {
-        if (!auth.isAuthenticated) return; // wait until authenticated
+         if (!auth.isAuthenticated) {
+            return <p>Please sign in to view products.</p>;
+        }
 
         getProducts(auth.user.access_token)
             .then((res) => {
@@ -22,6 +26,10 @@ function Products() {
                 setLoading(false);
             });
     }, [auth.isAuthenticated, auth.user]);
+
+    if (!auth.isAuthenticated) {
+        return <p>Please sign in to view products.</p>;
+    }
 
     if (loading) return <p>Loading Products...</p>;
     if (error) return <p>{error}</p>;
