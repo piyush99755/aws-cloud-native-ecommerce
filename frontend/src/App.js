@@ -1,7 +1,13 @@
 import logo from './logo.svg';
+import React, {useState} from 'react';
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
+import Products from '../src/components/products';
+import Cart from './components/Cart';
+import Orders from './components/Orders';
+import Checkout from './components/Checkout';
 import './App.css';
 import { useAuth } from 'react-oidc-context';
-import Products from '../src/components/products';
+
 
 function App() {
   const auth = useAuth();
@@ -22,26 +28,62 @@ function App() {
     return <div>Error: {auth.error.message}</div>;
   }
 
-  if(auth.isAuthenticated){
+  if(auth.isAuthenticated && auth.user){
     return(
       <div>
-        <h2>Welcome, {auth.user.profile.email}</h2>
+        <h2>Cloud E-Commerce App</h2>
         <pre>Access Token: {auth.user.access_token}</pre>
+        
 
-        {/* Signout Options*/ }
-        <button onClick={() => auth.removeUser()}>Clear Sessions</button>
+         {/* Signout Options */}
+        <button onClick={()=>auth.removeUser()}>Clear Sessions</button>
         <button onClick={signOutRedirect}>Sign out</button>
 
         {/* Show products only if user is authenticated */}
-          <Products />
+        <Products />
       </div>
     );
   }
   return (
+  <Router>
     <div>
-      <button onClick={()=> auth.signinRedirect()}>Sign in</button>
+      <h2>Welcome, {auth.user?.profile?.email || "Unknown User"}</h2>
+      {/* Auth Buttons */}
+        {!auth.isAuthenticated && <button onClick={() => auth.signinRedirect()}>Sign in</button>}
+        {auth.isAuthenticated && (
+          <>
+            <pre>Access Token: {auth.user.access_token}</pre>
+            <button onClick={() => auth.removeUser()}>Clear Sessions</button>
+            <button onClick={signOutRedirect}>Sign out</button>
+          </>
+        )}
+      <nav>
+        <Link to="/products">Products</Link> |{" "}
+        <Link to="/cart">Cart</Link> |{" "}
+        <Link to="/checkout">Checkout</Link>|{" "}
+        <Link to="/orders">Orders</Link>
+      </nav>
+      <br />
+      
+     
+
+      <Routes>
+        <Route path='/products' element = {<Products />}></Route>
+        <Route path='/cart' element = {<Cart />}></Route>
+        <Route path='/checkout' element = {<Checkout />}></Route>
+        <Route path='/orders' element = {<Orders />}></Route>
+        <Route path='*' element={<Products />}></Route>
+      </Routes>
     </div>
-  );
+  </Router>
+)
+
+  
+
+ 
 }
+
+
+
 
 export default App;
