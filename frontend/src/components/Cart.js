@@ -1,9 +1,9 @@
 import React from "react";
 import {Link, link} from 'react-router-dom';
 
-function Cart({cart, setCart}){
+function Cart({cart = [], setCart}){
     const removeFromCart = (id) => {
-        setCart(cart.filter((item)=>item.id != id));
+        setCart(cart.filter((item)=>item.id !== id));
     };
 
     const total = cart.reduce((sum,item) => sum + item.price * item.quantity, 0 );
