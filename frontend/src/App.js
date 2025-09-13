@@ -1,13 +1,19 @@
-import logo from './logo.svg';
-import React, {useState} from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Products from '../src/components/products';
+import Products from './components/Products';
 import Cart from './components/Cart';
 import Orders from './components/Orders';
 import Checkout from './components/Checkout';
 import './App.css';
 import { useAuth } from 'react-oidc-context';
+import { Elements } from '@stripe/react-stripe-js';
+import { loadStripe } from '@stripe/stripe-js';
 
+// Initialize Stripe
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
+console.log("Stripe Key in App.js:", process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+console.log("Stripe Promise:", stripePromise);
 
 function App() {
   const auth = useAuth();
@@ -17,73 +23,75 @@ function App() {
     const logoutUri = "https://app.piyushkumartadvi.link"; 
     const cognitoDomain = "https://us-east-1zylluw6ax.auth.us-east-1.amazoncognito.com";
     window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+  };
 
-  }
-
-  if (auth.isLoading){
+  if (auth.isLoading) {
     return <div>Loading...</div>;
   }
 
-  if(auth.error){
+  if (auth.error) {
     return <div>Error: {auth.error.message}</div>;
   }
 
-  if(auth.isAuthenticated && auth.user){
-    return(
-      <div>
-        <h2>Cloud E-Commerce App</h2>
-        <pre>Access Token: {auth.user.access_token}</pre>
-        
-
-         {/* Signout Options */}
-        <button onClick={()=>auth.removeUser()}>Clear Sessions</button>
-        <button onClick={signOutRedirect}>Sign out</button>
-
-        {/* Show products only if user is authenticated */}
-        <Products />
-      </div>
-    );
-  }
   return (
-  <Router>
-    <div>
-      <h2>Welcome, {auth.user?.profile?.email || "Unknown User"}</h2>
-      {/* Auth Buttons */}
-        {!auth.isAuthenticated && <button onClick={() => auth.signinRedirect()}>Sign in</button>}
-        {auth.isAuthenticated && (
-          <>
-            <pre>Access Token: {auth.user.access_token}</pre>
-            <button onClick={() => auth.removeUser()}>Clear Sessions</button>
-            <button onClick={signOutRedirect}>Sign out</button>
-          </>
-        )}
-      <nav>
-        <Link to="/products">Products</Link> |{" "}
-        <Link to="/cart">Cart</Link> |{" "}
-        <Link to="/checkout">Checkout</Link>|{" "}
-        <Link to="/orders">Orders</Link>
-      </nav>
-      <br />
-      
-     
+    <Router>
+      <Elements stripe={stripePromise}>
+        <div>
+          <h2>Cloud E-Commerce App</h2>
+          {auth.isAuthenticated && auth.user ? (
+            <>
+              <pre>Access Token: {auth.user.access_token}</pre>
+              <button onClick={() => auth.removeUser()}>Clear Sessions</button>
+              <button onClick={signOutRedirect}>Sign out</button>
+            </>
+          ) : (
+            <>
+              <h3>Welcome, {auth.user?.profile?.email || "Guest"}</h3>
+              <button onClick={() => auth.signinRedirect()}>Sign in</button>
+            </>
+          )}
 
-      <Routes>
-        <Route path='/products' element = {<Products />}></Route>
-        <Route path='/cart' element = {<Cart />}></Route>
-        <Route path='/checkout' element = {<Checkout />}></Route>
-        <Route path='/orders' element = {<Orders />}></Route>
-        <Route path='*' element={<Products />}></Route>
-      </Routes>
-    </div>
-  </Router>
-)
+          <nav>
+            <Link to="/products">Products</Link> |{" "}
+            <Link to="/cart">Cart</Link> |{" "}
+            <Link to="/checkout">Checkout</Link> |{" "}
+            <Link to="/orders">Orders</Link>
+          </nav>
 
-  
+          <Routes>
+            {/* Public routes */}
+            <Route path="/products" element={<Products />} />
+            <Route path="/cart" element={<Cart />} />
 
- 
+            {/* Protected routes */}
+            <Route
+              path="/checkout"
+              element={
+                auth.isAuthenticated ? (
+                  <Checkout />
+                ) : (
+                  <p>Please log in to access Checkout</p>
+                )
+              }
+            />
+            <Route
+              path="/orders"
+              element={
+                auth.isAuthenticated ? (
+                  <Orders />
+                ) : (
+                  <p>Please log in to view your orders</p>
+                )
+              }
+            />
+
+            {/* Default route */}
+            <Route path="*" element={<Products />} />
+          </Routes>
+        </div>
+      </Elements>
+    </Router>
+  );
 }
-
-
-
 
 export default App;
