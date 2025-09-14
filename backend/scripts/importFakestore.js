@@ -5,6 +5,8 @@ require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
 
+
+
 // Initialize Postgres connection
 const pool = new Pool({
   host: process.env.DB_HOST,
@@ -16,31 +18,19 @@ const pool = new Pool({
 
 async function fetchProducts() {
   try {
-    // Try fetching from Fakestore API
-    const { data } = await axios.get('https://fakestoreapi.com/products', {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) ' +
-          'AppleWebKit/537.36 (KHTML, like Gecko) ' +
-          'Chrome/116.0.0.0 Safari/537.36',
-      },
-      timeout: 10000, // 10s timeout
-    });
-    console.log(`Fetched ${data.length} products from Fakestore API.`);
-    return data;
-  } catch (err) {
-    console.error('Fakestore API failed, falling back to local JSON.', err.message);
-
-    // Fallback to local JSON file
+    // Read local JSON file
     const localPath = path.join(__dirname, 'fakestore.json');
     if (fs.existsSync(localPath)) {
-      const raw = fs.readFileSync(localPath);
-      const localData = JSON.parse(raw);
-      console.log(`Loaded ${localData.length} products from local fakestore.json.`);
-      return localData;
+      const raw = fs.readFileSync(localPath, 'utf-8');
+      const products = JSON.parse(raw);
+      console.log(`Loaded ${products.length} products from local fakestore.json.`);
+      return products;
     } else {
-      throw new Error('No local fakestore.json file found.');
+      throw new Error('fakestore.json file not found.');
     }
+  } catch (err) {
+    console.error('Error loading products from JSON:', err.message);
+    throw err;
   }
 }
 
