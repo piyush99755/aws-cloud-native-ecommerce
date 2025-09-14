@@ -11,25 +11,21 @@ function Products() {
 
    
 
-    useEffect(() => {
-    if (auth.isAuthenticated) {
-        getProducts(auth.user.access_token)
-            .then(res => setProducts(res.data))
-            .catch(err => {
-                console.error("Backend failed, using Fakestore API", err);
-                return axios.get("https://fakestoreapi.com/products");
-            })
-            .then(res => {
-                if (res && res.data) setProducts(res.data);
-                setLoading(false);
-            })
-            .catch(err => {
-                console.error("Fakestore fetch failed:", err);
-                setError("Failed to load products.");
-                setLoading(false);
-            });
-    }
-    }, [auth.isAuthenticated, auth.user]);
+   useEffect(() => {
+  if (auth.isAuthenticated && auth.user?.access_token) {
+    getProducts(auth.user.access_token)
+      .then(res => {
+        setProducts(res.data);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error("Failed to fetch products from backend:", err);
+        setError("Failed to load products.");
+        setLoading(false);
+      });
+  }
+}, [auth.isAuthenticated, auth.user?.access_token]);
+
 
 
         
