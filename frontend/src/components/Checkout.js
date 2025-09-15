@@ -50,25 +50,30 @@ function Checkout({ cart = [] }){
     };
 
     return (
-        <div>
-            <h2>Checkout</h2>
-            <ul>
+        <div className="max-w-4xl mx-auto px-4 py-8">
+            <h2 className="text-3xl font-bold mb-6">Checkout</h2>
+            <ul className="space-y-2 mb-4">
                 {cart.map((item) => (
                     <li key={item.id}>
                         {item.name} - {item.price} × {item.quantity}
                     </li>
                 ))}
             </ul>
-            <h3>total: ${total.toFixed(2)}</h3>
+            
+            <h3 className="text-xl font-semibold mb-4">total: ${total.toFixed(2)}</h3>
+            <div className="mb-4">
+                <CardElement className="p-2 border rounded" />
+            </div>
 
-            {/* Stripe Card Input */}
-            <CardElement />
+            
 
-            <button onClick = {handlePay} disabled={!stripe || loading}>
+            <button
+            className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition" 
+            onClick = {handlePay} disabled={!stripe || loading}>
                 {loading ? 'Processing...' : 'Pay Now'}
             </button>
 
-            {message && <p>{message}</p>}
+            {message && <p className="mt-4 text-red-500">{message}</p>}
         </div>
     );
 }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import Products from './components/Products';
+import Products from './components/products';
 import Cart from './components/Cart';
 import Orders from './components/Orders';
 import Checkout from './components/Checkout';
@@ -8,6 +8,8 @@ import './App.css';
 import { useAuth } from 'react-oidc-context';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import './styles/components.css';
+
 
 // Initialize Stripe
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);

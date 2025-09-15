@@ -1,0 +1,24 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .card {
+    @apply border rounded-lg shadow p-4 flex flex-col mb-4 bg-white;
+  }
+  .card-title {
+    @apply text-lg font-bold mb-2;
+  }
+  .card-price {
+    @apply text-gray-700 mb-2;
+  }
+  .add-btn {
+    @apply bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700;
+  }
+  .remove-btn {
+    @apply bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700;
+  }
+  .qty-input {
+    @apply border rounded px-2 py-1 w-16;
+  }
+}
