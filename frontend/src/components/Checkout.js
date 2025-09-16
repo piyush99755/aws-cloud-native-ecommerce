@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe,useElements } from '@stripe/react-stripe-js';
+import { useCart } from './CartContext';
 
-function Checkout({ cart = [] }){
+function Checkout(){
+    const { cart } = useCart();
     const stripe = useStripe();
     const elements = useElements();
 

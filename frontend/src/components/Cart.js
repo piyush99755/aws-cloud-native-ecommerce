@@ -1,11 +1,14 @@
 import React from "react";
-import {Link, link} from 'react-router-dom';
+import {Link} from 'react-router-dom';
+import { useCart } from "./CartContext";
 
-function Cart({cart = [], setCart}){
-    const removeFromCart = (id) => {
+function Cart(){
+    const { cart, removeFromCart } = useCart();
+    
+    /* const removeFromCart = (id) => {
         setCart(cart.filter((item)=>item.id !== id));
     };
-
+ */
     const total = cart.reduce((sum,item) => sum + item.price * item.quantity, 0 );
 
     return (
