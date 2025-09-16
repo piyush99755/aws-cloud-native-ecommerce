@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from 'react-oidc-context';
 import { getProducts } from '../api/productService';
+import { useCart } from '../components/CartContext';
 
 
-function Products( { addToCart } ) {
+function Products() {
     const auth = useAuth(); 
+    const { addToCart } = useCart();
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);

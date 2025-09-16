@@ -8,6 +8,7 @@ import './App.css';
 import { useAuth } from 'react-oidc-context';
 import { Elements } from '@stripe/react-stripe-js';
 import { loadStripe } from '@stripe/stripe-js';
+import { CartProvider } from './components/CartContext';
 import './styles/components.css';
 
 
@@ -38,7 +39,8 @@ function App() {
   return (
     <Router>
       <Elements stripe={stripePromise}>
-        <div>
+        <CartProvider>
+          <div>
           <h2>Cloud E-Commerce App</h2>
           {auth.isAuthenticated && auth.user ? (
             <>
@@ -91,6 +93,9 @@ function App() {
             <Route path="*" element={<Products />} />
           </Routes>
         </div>
+
+        </CartProvider>
+        
       </Elements>
     </Router>
   );
