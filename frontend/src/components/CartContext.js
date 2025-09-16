@@ -25,8 +25,18 @@ export function CartProvider({ children }) {
         setCart((prev) => prev.filter((item) => item.id !== id));
      };
 
+     const decrementFromCart = (id) => {
+        setCart((prev) => 
+            prev.map((item) => 
+                item.id === id 
+        ? {...item, qauntity: item.qauntity > 1 ? item.qauntity -1 : 0 }
+        : item)
+        .filter((item) => item.qauntity > 0)
+        );
+    };
+
      return (
-        <CartContext.Provider value={{cart, addToCart, removeFromCart}}>
+        <CartContext.Provider value={{cart, addToCart, decrementFromCart, removeFromCart}}>
             {children}
         </CartContext.Provider>
      )
