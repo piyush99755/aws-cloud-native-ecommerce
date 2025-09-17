@@ -1,11 +1,14 @@
 import React, { useState } from 'react';
 import { CardElement, useStripe,useElements } from '@stripe/react-stripe-js';
 import { useCart } from './CartContext';
+import { useNavigate } from 'react-router-dom';
 
 function Checkout(){
-    const { cart } = useCart();
+    const { cart, clearCart } = useCart();
     const stripe = useStripe();
     const elements = useElements();
+    const navigate = useNavigate();
+
 
     const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
@@ -17,7 +20,7 @@ function Checkout(){
         setLoading(true);
 
         try {
-            //created payment method on backend... 
+            //created payment intent from backend... 
             const res = await fetch('/api/payment/create-payment-intent', {
                 method:"POST",
                 headers: {'content-type': 'application/json'},
@@ -29,7 +32,7 @@ function Checkout(){
 
             const {clientSecret} = await res.json()
 
-            //payment with card..
+            //confirm payment with card details
             const result =await stripe.confirmCardPayment(clientSecret, {
                 payment_method: {
                     card:elements.getElement(CardElement),
@@ -40,7 +43,22 @@ function Checkout(){
                 setMessage(result.error.message);
             }else if(result.paymentIntent.status === "succeeded"){
                 setMessage("Payment successfull!!!");
-                 // TODO: call backend to save order in DB
+
+                //save order in backend
+                await fetch("/api/orders",  {
+                    method:"POST",
+                    headers: { "Content-Type": "application/json" },
+                    body:JSON.stringify({
+                        items:cart,
+                        total:total.toFixed(2)
+                    }),
+                });
+
+                //clear cart after successful order
+                clearCart && clearCart();
+                // Redirect to Orders after short delay
+                setTimeout(() => navigate('/orders'), 1500);
+                 
             }
         }
         catch(error){
@@ -56,8 +74,9 @@ function Checkout(){
             <h2 className="text-3xl font-bold mb-6">Checkout</h2>
             <ul className="space-y-2 mb-4">
                 {cart.map((item) => (
-                    <li key={item.id}>
-                        {item.name} - {item.price} × {item.quantity}
+                    <li key={item.id} className="flex items-center space-x-4">
+                        <img src={item.image} alt={item.name} className="w-12 h-12 object-contain" />
+                        <span>{item.name} - ${item.price} × {item.quantity}</span>
                     </li>
                 ))}
             </ul>
@@ -75,7 +94,17 @@ function Checkout(){
                 {loading ? 'Processing...' : 'Pay Now'}
             </button>
 
-            {message && <p className="mt-4 text-red-500">{message}</p>}
+            {message && (
+                <p
+                    className={`mt-4 ${
+                    message.toLowerCase().includes("success")
+                        ? "text-green-600 font-semibold"
+                        : "text-red-500"
+                    }`}
+                >
+                    {message}
+                </p>
+            )}
         </div>
     );
 }
