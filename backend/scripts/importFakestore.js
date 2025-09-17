@@ -16,17 +16,27 @@ const pool = new Pool({
   port: process.env.DB_PORT,
 });
 
+const localPath = path.join(__dirname, 'fakestore.json');
+
 async function fetchProducts() {
   try {
     // Read local JSON file
-    const localPath = path.join(__dirname, 'fakestore.json');
+    
     if (fs.existsSync(localPath)) {
       const raw = fs.readFileSync(localPath, 'utf-8');
       const products = JSON.parse(raw);
       console.log(`Loaded ${products.length} products from local fakestore.json.`);
       return products;
     } else {
-      throw new Error('fakestore.json file not found.');
+      // Fetch from API if no local cache
+      console.log("Fetching products from Fakestore API...");
+      const response = await axios.get('https://fakestoreapi.com/products');
+      const products = response.data;
+
+      // Save locally for reuse
+      fs.writeFileSync(localPath, JSON.stringify(products, null, 2));
+      console.log(`Fetched and saved ${products.length} products from Fakestore API.`);
+      return products;
     }
   } catch (err) {
     console.error('Error loading products from JSON:', err.message);
@@ -42,7 +52,12 @@ async function importData() {
       await pool.query(
         `INSERT INTO products (id, name, price, description, category, image)
          VALUES ($1, $2, $3, $4, $5, $6)
-         ON CONFLICT (id) DO NOTHING`,
+         ON CONFLICT (id) DO UPDATE SET
+         name = EXCLUDED.name,
+            price = EXCLUDED.price,
+            description = EXCLUDED.description,
+            category = EXCLUDED.category,
+            image = EXCLUDED.image;`,
         [
           product.id,
           product.title,
