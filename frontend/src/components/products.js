@@ -41,9 +41,19 @@ function Products() {
 
           return (
             <div key={product.id} className="bg-white shadow-md rounded-lg p-4 flex flex-col">
+
+              {/* Product Image */}
+              <img
+                src={product.image}
+                alt={product.name}
+                className="h-40 object-contain mb-4"
+              />
+
+               {/* Product Info */}
               <h3 className="font-semibold text-lg mb-2">{product.name}</h3>
               <p className="text-gray-700 mb-4">${product.price}</p>
 
+              {/* Add / Increment / Decrement Controls */}
               {cartItem ? (
                 <div className="flex items-center space-x-2 mt-auto">
                   <button
