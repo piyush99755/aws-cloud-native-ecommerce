@@ -51,7 +51,7 @@ app.get("/health", (req,res)=>res.status(200).send("OK"));
 // Products
 app.get("/api/products", async (req,res)=>{
   try {
-    const result = await pool.query("SELECT id, name, price FROM products");
+    const result = await pool.query("SELECT id, name, price, image FROM products");
     res.json(result.rows);
   } catch(err) {
     console.error("Error fetching products:", err);
