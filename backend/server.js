@@ -59,6 +59,61 @@ app.get("/api/products", async (req,res)=>{
   }
 });
 
+//orders routes
+app.post("/api/orders", async (req, res) => {
+  try {
+    const {items, total} = req.body;
+
+    //insert order into orders table... 
+    const result = await pool.query(
+      "INSERT INTO orders (total) VALUES ($1) RETURNING (id)",
+      [total] 
+    );
+    const orderId = result.rows[0].id;
+
+    //insert order items into orders_items table...
+    for (const item of items){
+      await pool.query(
+        `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
+        VALUES($1, $2, $3, $4, $5, $6)`,
+        [orderId, item.id, item.quantity, item.price, item.name, item.image]
+      );
+    }
+
+    res.json({message:"Order places successfully", orderId});
+}
+  catch(err) {
+    console.error("Error saving order", err);
+    res.status(500).json({error: "failed to save order"});
+  }
+});
+
+app.get("/api/orders", async (req, res) => {
+  try {
+    const ordersResult = await pool.query(
+      "SELECT * FROM orders ORDER BY id DESC"
+    );
+    const orders = [];
+
+    for (const order of ordersResult.rows) {
+      const itemsResult = await pool.query(
+        "SELECT * FROM order_items WHERE order_id = $1",
+        [order.id]
+      );
+      orders.push({
+        ...order,
+        items: itemsResult.rows,
+      });
+    }
+
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+
+
 // Root
 app.get("/", (req,res)=>res.send("App is running"));
 
