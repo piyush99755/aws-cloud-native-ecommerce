@@ -4,6 +4,7 @@ const { Pool } = require("pg");
 const cors = require("cors");
 
 const app = express();
+const path = require("path");
 
 // Allowed origins
 const allowedOrigins = [
@@ -117,6 +118,16 @@ app.get("/api/orders", async (req, res) => {
 // Root
 app.get("/", (req,res)=>res.send("App is running"));
 
+// Serve frontend in production
+if (process.env.NODE_ENV === "production") {
+  const buildPath = path.join(__dirname, "../frontend/build");
+  app.use(express.static(buildPath));
+
+  // Catch-all -> React handles routing
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(buildPath, "index.html"));
+  });
+}
 // Listen
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, "0.0.0.0", ()=>console.log(`Server running on port ${PORT}`));

@@ -4,6 +4,7 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { AuthProvider } from "react-oidc-context";
+import { BrowserRouter as Router } from "react-router-dom";
 
 const CognitoAuthConfig = {
   authority: "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_ZYlluw6aX",
@@ -17,7 +18,9 @@ const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <AuthProvider {...CognitoAuthConfig}>
-      <App />
+      <Router>
+        <App />
+      </Router>
     </AuthProvider>
     
   </React.StrictMode>
