@@ -3,8 +3,8 @@ version: 0.2
 env:
   variables:
     FRONTEND_BUCKET: "aws-cloud-native-ecommerce-frontend"
-    BACKEND_EB_APP: "cloud-native-ecommerce-backend"
-    BACKEND_EB_ENV: "cloud-native-ecommerce-env"
+    BACKEND_EB_APP: "aws-cloud-native-ecommerce"
+    BACKEND_EB_ENV: "ecommerce-env"
     ARTIFACT_BUCKET: "aws-cloud-native-ecommerce-artifacts"
 
 phases:
