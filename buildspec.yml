@@ -1,0 +1,46 @@
+version: 0.2
+
+env:
+  variables:
+    FRONTEND_BUCKET: "aws-cloud-native-ecommerce-frontend"
+    BACKEND_EB_APP: "cloud-native-ecommerce-backend"
+    BACKEND_EB_ENV: "cloud-native-ecommerce-env"
+    ARTIFACT_BUCKET: "aws-cloud-native-ecommerce-artifacts"
+
+phases:
+  install:
+    runtime-versions:
+      nodejs: 18
+    commands:
+      - echo "Installing backend dependencies..."
+      - cd backend && npm ci && cd ..
+      - echo "Installing frontend dependencies..."
+      - cd frontend && npm ci && cd ..
+
+  pre_build:
+    commands:
+      - echo "Pre-build phase..."
+
+  build:
+    commands:
+      - echo "Building backend..."
+      - cd backend && zip -r ../backend.zip . && cd ..
+      - echo "Building frontend..."
+      - cd frontend && npm run build && cd ..
+      - echo "Frontend build complete."
+
+  post_build:
+    commands:
+      - echo "Deploying frontend to S3..."
+      - aws s3 sync frontend/build/ s3://$FRONTEND_BUCKET --delete
+      - echo "Invalidating CloudFront cache..."
+      - aws cloudfront create-invalidation --distribution-id E27VTXLPQICWAN --paths "/*"
+      - echo "Deploying backend to Elastic Beanstalk..."
+      - aws s3 cp backend.zip s3://$ARTIFACT_BUCKET/backend.zip
+      - aws elasticbeanstalk create-application-version --application-name $BACKEND_EB_APP --version-label $(date +%Y%m%d%H%M%S) --source-bundle S3Bucket=$ARTIFACT_BUCKET,S3Key=backend.zip
+      - aws elasticbeanstalk update-environment --environment-name $BACKEND_EB_ENV --version-label $(date +%Y%m%d%H%M%S)
+
+artifacts:
+  files:
+    - backend.zip
+  discard-paths: yes
