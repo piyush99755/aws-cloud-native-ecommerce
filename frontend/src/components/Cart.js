@@ -30,7 +30,7 @@ function Cart({ guestMode }) {
               <img
                 src={item.image || "/placeholder.png"}
                 alt={item.name}
-                className="h-40 object-contain mb-4"
+                className="w-20 h-20 object-cover mb-4 rounded"
               />
               <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
               <p className="text-gray-700 mb-4">

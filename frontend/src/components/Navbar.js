@@ -5,7 +5,6 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
   const location = useLocation();
 
   const navLinks = [
-    { path: "/", label: "Home" },
     { path: "/products", label: "Products" },
     { path: "/cart", label: "Cart" },
     { path: "/checkout", label: "Checkout" },

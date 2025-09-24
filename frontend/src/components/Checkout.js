@@ -69,12 +69,12 @@ function Checkout({ guestMode }) {
         {cart.map((item) => (
           <div
             key={item.id}
-            className="flex flex-col bg-white shadow rounded-lg p-4"
+            className="flex items-center bg-white shadow rounded-lg p-4"
           >
             <img
               src={item.image || "/placeholder.png"}
               alt={item.name}
-              className="h-32 object-contain mb-2"
+              className="w-20 h-20 object-cover rounded mr-4"
             />
             <div className="flex flex-col flex-1">
               <p className="font-semibold">{item.name}</p>

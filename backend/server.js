@@ -114,6 +114,22 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
+// Delete an order by ID
+app.delete("/api/orders/:id", async (req, res) => {
+  const orderId = req.params.id;
+  try {
+    // Delete order items first (FK constraint)
+    await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
+    // Then delete the order itself
+    await pool.query("DELETE FROM orders WHERE id = $1", [orderId]);
+    res.json({ message: "Order deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting order:", err);
+    res.status(500).json({ error: "Failed to delete order" });
+  }
+});
+
+
 
 // Root
 app.get("/", (req,res)=>res.send("App is running"));
