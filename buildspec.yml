@@ -15,34 +15,36 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo " Installing dependencies..."
+      - echo "Installing dependencies..."
       - yum install -y zip unzip  # ensure zip is available in CodeBuild
       - |
         if [ "$BUILD_MODE" = "full" ]; then
-          echo " Installing frontend dependencies..."
+          echo "Installing frontend dependencies..."
           cd frontend && npm ci && cd ..
         fi
-      - echo " Installing backend dependencies..."
+      - echo "Installing backend dependencies..."
       - cd backend && npm ci && cd ..
 
   build:
     commands:
       - echo " Packaging backend for Elastic Beanstalk..."
       - cd backend
-      #  Corrected zip command: excludes .elasticbeanstalk and keeps Procfile/package.json/server.js at root
+      # Zip backend files with Procfile, package.json, server.js at root
       - zip -r ../backend.zip * .[^.]* -x "node_modules/*" "*.log" "*.env" ".git/*" ".elasticbeanstalk/*"
       - cd ..
+      - echo " Checking backend.zip contents..."
+      - unzip -l backend.zip | grep -E "Procfile|package.json|server.js"
       - |
         if [ "$BUILD_MODE" = "full" ]; then
-          echo " Building frontend React app..."
+          echo "Building frontend React app..."
           cd frontend && npm run build && cd ..
         fi
 
 post_build:
   commands:
-    - echo " Uploading backend.zip to S3..."
+    - echo "Uploading backend.zip to S3..."
     - aws s3 cp backend.zip s3://$ARTIFACT_BUCKET/backend/$TIMESTAMP.zip
-    - echo " Creating Elastic Beanstalk application version..."
+    - echo "Creating Elastic Beanstalk application version..."
     - aws elasticbeanstalk create-application-version \
         --application-name $BACKEND_EB_APP \
         --version-label $TIMESTAMP \
@@ -53,9 +55,9 @@ post_build:
         --version-label $TIMESTAMP
     - |
       if [ "$BUILD_MODE" = "full" ]; then
-        echo " Uploading frontend build to S3..."
+        echo "Uploading frontend build to S3..."
         aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
-        echo " Invalidating CloudFront cache..."
+        echo "Invalidating CloudFront cache..."
         aws cloudfront create-invalidation \
           --distribution-id $CLOUDFRONT_DIST_ID \
           --paths "/*"
