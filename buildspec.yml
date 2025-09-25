@@ -1,38 +1,65 @@
 version: 0.2
 
+env:
+  variables:
+    FRONTEND_BUCKET: "aws-cloud-native-ecommerce-frontend"
+    BACKEND_EB_APP: "aws-cloud-native-ecommerce"
+    BACKEND_EB_ENV: "ecommerce-env"
+    ARTIFACT_BUCKET: "aws-cloud-native-ecommerce-artifacts"
+    TIMESTAMP: "app-$(date +%Y%m%d%H%M%S)"
+    CLOUDFRONT_DIST_ID: "E27VTXLPQICWAN"
+    BUILD_MODE: "full"  # Options: full, backend
+
 phases:
   install:
     runtime-versions:
       nodejs: 18
-  pre_build:
     commands:
-      - echo "Installing frontend dependencies..."
-      - cd frontend
-      - npm install
-      - cd ..
+      - echo "Installing dependencies..."
+      - |
+        if [ "$BUILD_MODE" = "full" ]; then
+          echo "Installing frontend dependencies..."
+          cd frontend && npm install && cd ..
+        fi
       - echo "Installing backend dependencies..."
-      - cd backend
-      - npm install
-      - cd ..
+      - cd backend && npm install && cd ..
+
   build:
     commands:
-      - echo "Building frontend..."
-      - cd frontend
-      - npm run build
-      - cd ..
+      - |
+        if [ "$BUILD_MODE" = "full" ]; then
+          echo "Building frontend..."
+          cd frontend && npm run build && cd ..
+        fi
       - echo "Preparing backend bundle..."
       - cd backend
-      # (optional) run tests here
       - zip -r ../backend.zip . -x "node_modules/*"
       - cd ..
 
+post_build:
+  commands:
+    - echo "Uploading backend to S3..."
+    - aws s3 cp backend.zip s3://$ARTIFACT_BUCKET/backend.zip
+    - echo "Creating Elastic Beanstalk application version..."
+    - aws elasticbeanstalk create-application-version \
+        --application-name $BACKEND_EB_APP \
+        --version-label $TIMESTAMP \
+        --source-bundle S3Bucket=$ARTIFACT_BUCKET,S3Key=backend.zip
+    - echo "Updating Elastic Beanstalk environment..."
+    - aws elasticbeanstalk update-environment \
+        --environment-name $BACKEND_EB_ENV \
+        --version-label $TIMESTAMP
+    - |
+        if [ "$BUILD_MODE" = "full" ]; then
+          echo "Uploading frontend to S3..."
+          aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
+          echo "Invalidating CloudFront cache..."
+          aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths "/*"
+        fi
+    - echo "Build and deployment completed."
+
 artifacts:
   files:
-    - frontend/build/**/*   # Only include the built frontend
-  name: frontend.zip
+    - backend.zip
+    - frontend/build/**/* # frontend artifacts only if full build
   discard-paths: no
-  secondary-artifacts:
-    BackendArtifact:
-      files:
-        - backend.zip
-      discard-paths: yes
