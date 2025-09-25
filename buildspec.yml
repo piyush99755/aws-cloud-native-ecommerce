@@ -26,17 +26,18 @@ phases:
       - cd backend && npm ci && cd ..
 
   build:
-    commands:
-      - echo "📦 Packaging backend for Elastic Beanstalk..."
-      - cd backend
-      # Move required files to root of zip
-      - zip -r9 ../backend.zip * .ebextensions Procfile package.json server.js app.js -x "node_modules/*" "*.log" "*.env" ".git/*"
-      - cd ..
-      - |
-        if [ "$BUILD_MODE" = "full" ]; then
-          echo "⚡ Building frontend React app..."
-          cd frontend && npm run build && cd ..
-        fi
+  commands:
+    - echo "📦 Packaging backend for Elastic Beanstalk..."
+    - cd backend
+    # zip contents (.) into ../backend.zip so root has Procfile, package.json, server.js
+    - zip -r ../backend.zip . -x "node_modules/*" "*.log" "*.env" ".git/*"
+    - cd ..
+    - |
+      if [ "$BUILD_MODE" = "full" ]; then
+        echo "⚡ Building frontend React app..."
+        cd frontend && npm run build && cd ..
+      fi
+
 
 post_build:
   commands:
