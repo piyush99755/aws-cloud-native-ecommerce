@@ -23,17 +23,16 @@ phases:
       - echo "Preparing backend bundle..."
       - cd backend
       # (optional) run tests here
-      - zip -r ../backend.zip .
+      - zip -r ../backend.zip . -x "node_modules/*"
       - cd ..
-  post_build:
-    commands:
-      - echo "Frontend and backend build completed."
 
 artifacts:
-  files: 
-    - frontend/**/*
+  files:
+    - frontend/build/**/*   # Only include the built frontend
   name: frontend.zip
+  discard-paths: no
   secondary-artifacts:
     BackendArtifact:
       files:
         - backend.zip
+      discard-paths: yes
