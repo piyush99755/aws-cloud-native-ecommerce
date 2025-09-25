@@ -26,19 +26,20 @@ phases:
 
   build:
     commands:
+      - echo "Preparing backend artifact..."
+      - cd backend
+      # Zip backend files with Procfile, package.json, server.js/app.js at root
+      - zip -r ../backend.zip . -x "node_modules/*" "*.log" "*.env"
+      - cd ..
       - |
         if [ "$BUILD_MODE" = "full" ]; then
           echo "Building frontend..."
           cd frontend && npm run build && cd ..
         fi
-      - echo "Preparing backend bundle..."
-      - cd backend
-      - zip -r ../backend.zip . -x "node_modules/*"
-      - cd ..
 
 post_build:
   commands:
-    - echo "Uploading backend to S3..."
+    - echo "Uploading backend.zip to S3..."
     - aws s3 cp backend.zip s3://$ARTIFACT_BUCKET/backend.zip
     - echo "Creating Elastic Beanstalk application version..."
     - aws elasticbeanstalk create-application-version \
@@ -50,16 +51,21 @@ post_build:
         --environment-name $BACKEND_EB_ENV \
         --version-label $TIMESTAMP
     - |
-        if [ "$BUILD_MODE" = "full" ]; then
-          echo "Uploading frontend to S3..."
-          aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
-          echo "Invalidating CloudFront cache..."
-          aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths "/*"
-        fi
+      if [ "$BUILD_MODE" = "full" ]; then
+        echo "Uploading frontend build to S3..."
+        aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
+        echo "Invalidating CloudFront cache..."
+        aws cloudfront create-invalidation --distribution-id $CLOUDFRONT_DIST_ID --paths "/*"
+      fi
     - echo "Build and deployment completed."
 
 artifacts:
   files:
     - backend.zip
-    - frontend/build/**/* # frontend artifacts only if full build
+    - frontend/build/**/*   # Only included if full build
   discard-paths: no
+  secondary-artifacts:
+    BackendArtifact:
+      files:
+        - backend.zip
+      discard-paths: yes
