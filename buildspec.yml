@@ -15,47 +15,47 @@ phases:
     runtime-versions:
       nodejs: 18
     commands:
-      - echo "Installing dependencies..."
-      - yum install -y zip unzip  # ensure zip is available in CodeBuild
+      - echo "🔧 Installing dependencies..."
+      - yum install -y zip unzip  # make sure zip is available
       - |
         if [ "$BUILD_MODE" = "full" ]; then
-          echo "Installing frontend dependencies..."
+          echo "📦 Installing frontend dependencies..."
           cd frontend && npm ci && cd ..
         fi
-      - echo "Installing backend dependencies..."
+      - echo "📦 Installing backend dependencies..."
       - cd backend && npm ci && cd ..
 
   build:
     commands:
-      - echo "Packaging backend for Elastic Beanstalk..."
+      - echo "📦 Packaging backend for Elastic Beanstalk..."
       - cd backend
-      # Important: put Procfile, package.json, server.js at root of zip
-      - zip -r ../backend.zip . -x "node_modules/*" "*.log" "*.env" ".git/*"
+      # Move required files to root of zip
+      - zip -r9 ../backend.zip * .ebextensions Procfile package.json server.js app.js -x "node_modules/*" "*.log" "*.env" ".git/*"
       - cd ..
       - |
         if [ "$BUILD_MODE" = "full" ]; then
-          echo "Building frontend React app..."
+          echo "⚡ Building frontend React app..."
           cd frontend && npm run build && cd ..
         fi
 
 post_build:
   commands:
-    - echo "Uploading backend.zip to S3..."
+    - echo "⬆️ Uploading backend.zip to S3..."
     - aws s3 cp backend.zip s3://$ARTIFACT_BUCKET/backend/$TIMESTAMP.zip
-    - echo "Creating Elastic Beanstalk application version..."
+    - echo "🚀 Creating Elastic Beanstalk application version..."
     - aws elasticbeanstalk create-application-version \
         --application-name $BACKEND_EB_APP \
         --version-label $TIMESTAMP \
         --source-bundle S3Bucket=$ARTIFACT_BUCKET,S3Key=backend/$TIMESTAMP.zip
-    - echo "Updating Elastic Beanstalk environment..."
+    - echo "🌍 Updating Elastic Beanstalk environment..."
     - aws elasticbeanstalk update-environment \
         --environment-name $BACKEND_EB_ENV \
         --version-label $TIMESTAMP
     - |
       if [ "$BUILD_MODE" = "full" ]; then
-        echo "Uploading frontend build to S3..."
+        echo "⬆️ Uploading frontend build to S3..."
         aws s3 sync frontend/build s3://$FRONTEND_BUCKET --delete
-        echo "Invalidating CloudFront cache..."
+        echo "♻️ Invalidating CloudFront cache..."
         aws cloudfront create-invalidation \
           --distribution-id $CLOUDFRONT_DIST_ID \
           --paths "/*"
