@@ -4,19 +4,18 @@ function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
-  // Modal state
   const [modal, setModal] = useState({
     visible: false,
     message: "",
     onConfirm: null,
   });
+  const [deleting, setDeleting] = useState(null); // track order being deleted
 
   // Fetch orders from backend
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/orders" ,{ cache: "no-store" });
+      const res = await fetch("/api/orders", { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch orders");
       const data = await res.json();
       setOrders(data);
@@ -46,15 +45,21 @@ function Orders() {
   const handleDelete = (orderId) => {
     showConfirm("Are you sure you want to delete this order?", async () => {
       try {
-        console.log("Sending DELETE request for order:", orderId);
-        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+        setDeleting(orderId); // mark as deleting
+        // Optimistic update: remove order from UI immediately
+        setOrders((prev) => prev.filter((o) => o.id !== orderId));
+
+        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE", cache: "no-store" });
         if (!res.ok) throw new Error("Failed to delete order");
 
-        await fetchOrders();
         showAlert("Order deleted successfully");
       } catch (err) {
         console.error(err);
         showAlert("Failed to delete order");
+        // Re-fetch to restore state if deletion fails
+        await fetchOrders();
+      } finally {
+        setDeleting(null);
       }
     });
   };
@@ -73,14 +78,15 @@ function Orders() {
               <h3 className="font-semibold text-lg">Order #{order.id}</h3>
               <button
                 onClick={() => handleDelete(order.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                disabled={deleting === order.id}
+                className={`px-2 py-1 rounded text-white ${deleting === order.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
               >
-                Delete
+                {deleting === order.id ? 'Deleting...' : 'Delete'}
               </button>
             </div>
             <p className="text-gray-600">Total: ${order.total}</p>
             <div className="mt-2 border-t pt-2">
-              {order.items.map((item) => (
+              {order.items?.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-1">
                   <div className="flex items-center space-x-2">
                     <img
@@ -108,10 +114,13 @@ function Orders() {
                 <>
                   <button
                     onClick={async () => {
-                      if (modal.onConfirm) {
-                        await modal.onConfirm(); // Await async confirm function
+                      try {
+                        if (modal.onConfirm) await modal.onConfirm();
+                      } catch (e) {
+                        console.error(e);
+                      } finally {
+                        setModal({ visible: false, message: "", onConfirm: null });
                       }
-                      setModal({ visible: false, message: "", onConfirm: null });
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mr-2"
                   >
