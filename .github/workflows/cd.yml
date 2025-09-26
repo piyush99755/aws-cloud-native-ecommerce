@@ -30,24 +30,24 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      # 5. Configure AWS credentials
+      # 5. Configure AWS credentials (only if all required secrets exist)
       - name: Configure AWS credentials
-        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' && secrets.AWS_REGION != '' }}
+        if: ${{ secrets.AWS_ACCESS_KEY_ID && secrets.AWS_SECRET_ACCESS_KEY && secrets.AWS_REGION }}
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 6. Deploy frontend to S3
+      # 6. Deploy frontend to S3 (only if S3_BUCKET secret exists)
       - name: Deploy frontend to S3
-        if: ${{ secrets.S3_BUCKET != '' }}
+        if: ${{ secrets.S3_BUCKET }}
         run: |
           aws s3 sync frontend/build/ s3://${{ secrets.S3_BUCKET }} --delete
 
-      # 7. Invalidate CloudFront cache
+      # 7. Invalidate CloudFront cache (only if CLOUDFRONT_DISTRIBUTION_ID secret exists)
       - name: Invalidate CloudFront cache
-        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
+        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
