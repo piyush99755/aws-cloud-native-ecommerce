@@ -4,18 +4,18 @@ name: CD
 on:
   push:
     branches:
-      - main  # deploy on push to main branch
+      - main
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the repository
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
-          fetch-depth: 0  # ensures full checkout
+          fetch-depth: 0
 
       # 2. Setup Node.js
       - name: Setup Node.js
@@ -23,10 +23,13 @@ jobs:
         with:
           node-version: 18
 
-      # 3. Upgrade npm (optional but ensures npm ci works)
-      - name: Upgrade npm
-        run: npm install -g npm@9
-        working-directory: ./frontend
+      # 3. Verify frontend folder exists
+      - name: Verify frontend folder
+        run: |
+          if [ ! -d "./frontend" ]; then
+            echo "Error: ./frontend folder does not exist!"
+            exit 1
+          fi
 
       # 4. Install frontend dependencies
       - name: Install frontend dependencies
@@ -38,7 +41,17 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      # 6. Configure AWS credentials
+      # 6. Check required AWS secrets
+      - name: Check AWS secrets
+        run: |
+          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || \
+             [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] || \
+             [ -z "${{ secrets.AWS_REGION }}" ]; then
+            echo "Error: AWS secrets are not set!"
+            exit 1
+          fi
+
+      # 7. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -46,18 +59,19 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 7. Deploy to S3
+      # 8. Deploy to S3
       - name: Deploy to S3
         run: |
+          echo "Deploying frontend to S3..."
           aws s3 sync frontend/build/ s3://aws-cloud-native-ecommerce-frontend --delete
-          echo "Frontend deployed to S3 successfully!"
+          echo "Frontend deployed successfully!"
 
-      # 8. Optional: Invalidate CloudFront cache
+      # 9. Optional: Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         if: success() && ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
         run: |
+          echo "Invalidating CloudFront cache..."
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
-          echo "CloudFront cache invalidated"
-
+          echo "CloudFront cache invalidated."
