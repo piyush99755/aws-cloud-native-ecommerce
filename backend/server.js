@@ -93,6 +93,7 @@ app.post("/api/orders", async (req, res) => {
   }
 });
 
+
 // --- GET all orders ---
 app.get("/api/orders", async (req, res) => {
   try {
@@ -117,19 +118,23 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
+
+// --- DELETE order ---
 // --- DELETE order ---
 app.delete("/api/orders/:id", async (req, res) => {
   const orderId = parseInt(req.params.id, 10);
-  console.log("Deleting order ID:", orderId);
+  if (isNaN(orderId)) return res.status(400).json({ error: "Invalid order ID" });
 
   try {
-    // Delete items first
-    await pool.query("DELETE FROM order_items WHERE order_id = $1 RETURNING *", [orderId]);
+    // Delete items first (foreign key)
+    await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
 
-    // Delete order
+    // Delete order itself
     const result = await pool.query("DELETE FROM orders WHERE id = $1 RETURNING *", [orderId]);
 
-    if (result.rowCount === 0) return res.status(404).json({ error: "Order not found" });
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
 
     console.log("Order deleted:", orderId);
     res.json({ message: "Order deleted successfully" });
@@ -138,6 +143,7 @@ app.delete("/api/orders/:id", async (req, res) => {
     res.status(500).json({ error: "Failed to delete order" });
   }
 });
+
 
 
 

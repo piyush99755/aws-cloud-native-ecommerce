@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 
+// --- Define addOrder outside the component ---
+let addOrder; // We'll assign it inside the component
+
 function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,6 +34,11 @@ function Orders() {
   useEffect(() => {
     fetchOrders();
   }, []);
+
+  // Assign addOrder here so it's accessible outside
+  addOrder = (newOrder) => {
+    setOrders((prev) => [newOrder, ...prev]);
+  };
 
   // Show confirm modal
   const showConfirm = (message, onConfirm) => {
@@ -134,3 +142,4 @@ function Orders() {
 }
 
 export default Orders;
+export { addOrder };
