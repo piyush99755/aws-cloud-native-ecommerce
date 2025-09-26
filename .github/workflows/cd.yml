@@ -1,3 +1,4 @@
+
 name: CD
 
 on:
@@ -59,3 +60,4 @@ jobs:
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
             --paths "/*"
           echo "CloudFront cache invalidated"
+
