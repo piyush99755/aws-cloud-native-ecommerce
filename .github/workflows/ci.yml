@@ -11,19 +11,38 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      # 1. Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: 20
+      # 2. Set up Node.js
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 20
 
-    - name: Install dependencies
-      run: npm ci
+      # 3. Install frontend dependencies
+      - name: Install frontend dependencies
+        working-directory: ./frontend
+        run: npm ci
 
-    - name: Run tests
-      run: npm test -- --watchAll=false
+      # 4. Run frontend tests
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test -- --watchAll=false
 
-    - name: Build project
-      run: npm run build
+      # 5. Build frontend
+      - name: Build frontend
+        working-directory: ./frontend
+        run: npm run build
+
+      # 6. Optional: backend tests/build (if you have backend)
+      - name: Install backend dependencies
+        if: ${{ exists('backend/package-lock.json') }}
+        working-directory: ./backend
+        run: npm ci
+
+      - name: Run backend tests
+        if: ${{ exists('backend/package-lock.json') }}
+        working-directory: ./backend
+        run: npm test

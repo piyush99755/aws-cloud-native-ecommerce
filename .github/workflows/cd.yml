@@ -3,15 +3,14 @@ name: CD
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the repository
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -21,7 +20,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 18
+          node-version: 20  # Keep consistent with CI
 
       # 3. Verify frontend folder and lockfile
       - name: Verify frontend folder & lockfile
@@ -45,7 +44,7 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      # 6. Verify backend folder and lockfile (if backend deployment is needed)
+      # 6. Verify backend folder and lockfile (optional)
       - name: Verify backend folder & lockfile
         run: |
           if [ ! -d "./backend" ]; then
@@ -57,7 +56,7 @@ jobs:
 
       # 7. Install backend dependencies (optional)
       - name: Install backend dependencies
-        if: ${{ always() && (exists('backend/package-lock.json')) }}
+        if: ${{ exists('backend/package-lock.json') }}
         working-directory: ./backend
         run: npm ci
 
