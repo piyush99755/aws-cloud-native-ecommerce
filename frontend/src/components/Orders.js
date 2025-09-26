@@ -8,7 +8,6 @@ function Orders() {
   // Modal state
   const [modal, setModal] = useState({
     visible: false,
-    type: "", // "confirm" | "alert"
     message: "",
     onConfirm: null,
   });
@@ -33,14 +32,14 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Show Confirm modal
+  // Show confirm modal
   const showConfirm = (message, onConfirm) => {
-    setModal({ visible: true, type: "confirm", message, onConfirm });
+    setModal({ visible: true, message, onConfirm });
   };
 
-  // Show Alert modal
+  // Show alert modal
   const showAlert = (message) => {
-    setModal({ visible: true, type: "alert", message, onConfirm: null });
+    setModal({ visible: true, message, onConfirm: null });
   };
 
   // Handle order deletion
@@ -50,9 +49,10 @@ function Orders() {
         const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete order");
 
-        // Refresh orders from backend
+        // Refetch orders after deletion
         await fetchOrders();
 
+        // Show simple alert
         showAlert("Order deleted successfully");
       } catch (err) {
         console.error(err);
@@ -102,41 +102,31 @@ function Orders() {
 
       {/* Modal */}
       {modal.visible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 transition-opacity duration-300 ease-out">
-          <div
-            className={`bg-white rounded-lg shadow-lg p-6 w-96 text-center transform transition-transform duration-300 ease-out
-              ${modal.visible ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
-          >
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-96 text-center">
             <p className="mb-4">{modal.message}</p>
-            <div className="flex justify-center gap-4">
-              {/* Confirm buttons */}
-              {modal.type === "confirm" && (
+            <div className="flex justify-center">
+              {modal.onConfirm ? (
                 <>
                   <button
                     onClick={() => {
                       modal.onConfirm?.();
-                      setModal({ visible: false, type: "", message: "", onConfirm: null });
+                      setModal({ visible: false, message: "", onConfirm: null });
                     }}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mr-2"
                   >
                     Yes
                   </button>
                   <button
-                    onClick={() =>
-                      setModal({ visible: false, type: "", message: "", onConfirm: null })
-                    }
+                    onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
                     className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                   >
                     No
                   </button>
                 </>
-              )}
-              {/* Alert button */}
-              {modal.type === "alert" && (
+              ) : (
                 <button
-                  onClick={() =>
-                    setModal({ visible: false, type: "", message: "", onConfirm: null })
-                  }
+                  onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
                   className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                 >
                   OK

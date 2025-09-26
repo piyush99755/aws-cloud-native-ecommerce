@@ -1,144 +1,158 @@
-import React, { useState, useEffect } from "react";
+const express = require("express");
+require("dotenv").config();
+const { Pool } = require("pg");
+const cors = require("cors");
 
-function Orders() {
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+const app = express();
+const path = require("path");
 
-  // Modal state
-  const [modal, setModal] = useState({
-    visible: false,
-    type: "", // "confirm" | "alert"
-    message: "",
-    onConfirm: null,
-  });
-
-  // Fetch orders from backend
-  const fetchOrders = async () => {
-    try {
-      setLoading(true);
-      const res = await fetch("/api/orders");
-      if (!res.ok) throw new Error("Failed to fetch orders");
-      const data = await res.json();
-      setOrders(data);
-    } catch (err) {
-      console.error(err);
-      setError("Error fetching orders");
-    } finally {
-      setLoading(false);
+// Allowed origins
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://app.piyushkumartadvi.link"
+];
+app.use(cors({
+  origin: function(origin, callback){
+    if(!origin) return callback(null, true); // allow REST clients 
+    if(allowedOrigins.indexOf(origin) === -1){
+      var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
     }
-  };
+    return callback(null, true);
+  },
+  methods: ["GET","POST","PUT","DELETE","OPTIONS"],
+  allowedHeaders: ["Content-Type","Authorization"],
+  credentials: true
+}));
 
-  useEffect(() => {
-    fetchOrders();
-  }, []);
+app.use(express.json());
 
-  // Show confirm modal
-  const showConfirm = (message, onConfirm) => {
-    setModal({ visible: true, type: "confirm", message, onConfirm });
-  };
+// Postgres setup
+const pool = new Pool({
+  host: process.env.DB_HOST || "127.0.0.1",
+  user: process.env.DB_USER || "ecommerce_user",
+  password: process.env.DB_PASS || "Born@1992",
+  database: process.env.DB_NAME || "ecommerce",
+  port: process.env.DB_PORT || 5432
+});
+pool.connect()
+  .then(() => console.log("Connected to Postgres"))
+  .catch(err => console.error("DB connection failed:", err));
 
-  // Show alert modal
-  const showAlert = (message) => {
-    setModal({ visible: true, type: "alert", message, onConfirm: null });
-  };
+// Log all requests
+app.use((req,res,next)=> { console.log(`➡️ ${req.method} ${req.path}`); next(); });
 
-  // Handle order deletion
-  const handleDelete = (orderId) => {
-    showConfirm("Are you sure you want to delete this order?", async () => {
-      try {
-        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete order");
+// Stripe payment routes
+const paymentRoutes = require('./routes/payment');
+app.use('/api/payment', paymentRoutes);
 
-        // Refetch orders after deletion to sync with backend
-        await fetchOrders();
+// Health check
+app.get("/health", (req,res)=>res.status(200).send("OK"));
 
-        showAlert("Order deleted successfully");
-      } catch (err) {
-        console.error(err);
-        showAlert("Failed to delete order");
-      }
-    });
-  };
+// Products
+app.get("/api/products", async (req,res)=>{
+  try {
+    const result = await pool.query("SELECT id, name, price, image FROM products");
+    res.json(result.rows);
+  } catch(err) {
+    console.error("Error fetching products:", err);
+    res.status(500).json({ error:"Failed to fetch products" });
+  }
+});
 
-  if (loading) return <p className="text-center mt-10 text-gray-700">Loading orders...</p>;
-  if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
-  if (!orders.length) return <p className="text-center mt-10 text-gray-700">No orders yet.</p>;
+//orders routes
+app.post("/api/orders", async (req, res) => {
+  try {
+    const {items, total} = req.body;
 
-  return (
-    <>
-      {/* Orders List */}
-      <div className="space-y-6">
-        {orders.map((order) => (
-          <div key={order.id} className="bg-white shadow p-4 rounded-lg">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-lg">Order #{order.id}</h3>
-              <button
-                onClick={() => handleDelete(order.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
-              >
-                Delete
-              </button>
-            </div>
-            <p className="text-gray-600">Total: ${order.total}</p>
-            <div className="mt-2 border-t pt-2">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-1">
-                  <div className="flex items-center space-x-2">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
-                    <span>{item.name}</span>
-                  </div>
-                  <span>{item.quantity} x ${item.price}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
-      </div>
+    //insert order into orders table... 
+    const result = await pool.query(
+      "INSERT INTO orders (total) VALUES ($1) RETURNING (id)",
+      [total] 
+    );
+    const orderId = result.rows[0].id;
 
-      {/* Modal */}
-      {modal.visible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96 text-center">
-            <p className="mb-4">{modal.message}</p>
-            <div className="flex justify-center gap-4">
-              {modal.type === "confirm" && (
-                <>
-                  <button
-                    onClick={() => {
-                      modal.onConfirm?.();
-                      setModal({ visible: false, type: "", message: "", onConfirm: null });
-                    }}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={() => setModal({ visible: false, type: "", message: "", onConfirm: null })}
-                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                  >
-                    No
-                  </button>
-                </>
-              )}
-              {modal.type === "alert" && (
-                <button
-                  onClick={() => setModal({ visible: false, type: "", message: "", onConfirm: null })}
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                >
-                  OK
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
+    //insert order items into orders_items table...
+    for (const item of items){
+      await pool.query(
+        `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
+        VALUES($1, $2, $3, $4, $5, $6)`,
+        [orderId, item.id, item.quantity, item.price, item.name, item.image]
+      );
+    }
+
+    res.json({message:"Order places successfully", orderId});
 }
+  catch(err) {
+    console.error("Error saving order", err);
+    res.status(500).json({error: "failed to save order"});
+  }
+});
 
-export default Orders;
+app.get("/api/orders", async (req, res) => {
+  try {
+    const ordersResult = await pool.query(
+      "SELECT * FROM orders ORDER BY id DESC"
+    );
+    const orders = [];
+
+    for (const order of ordersResult.rows) {
+      const itemsResult = await pool.query(
+        "SELECT * FROM order_items WHERE order_id = $1",
+        [order.id]
+      );
+      orders.push({
+        ...order,
+        items: itemsResult.rows,
+      });
+    }
+
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+
+
+// Delete an order by ID
+app.delete("/api/orders/:id", async (req, res) => {
+  const orderId = parseInt(req.params.id, 10); // Convert to integer
+  console.log("Deleting order ID:", orderId);
+
+  try {
+    // Delete order items first (foreign key)
+    await pool.query("DELETE FROM orders_items WHERE order_id = $1", [orderId]);
+
+    // Delete the order itself
+    const result = await pool.query("DELETE FROM orders WHERE id = $1 RETURNING *", [orderId]);
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({ message: "Order deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting order:", err);
+    res.status(500).json({ error: "Failed to delete order" });
+  }
+});
+
+
+
+// Root
+app.get("/", (req,res)=>res.send("App is running"));
+
+// Serve frontend in production
+if (process.env.NODE_ENV === "production") {
+  const buildPath = path.join(__dirname, "../frontend/build");
+  app.use(express.static(buildPath));
+
+  // Catch-all -> React handles routing
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(buildPath, "index.html"));
+  });
+}
+// Listen
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, "0.0.0.0", ()=>console.log(`Server running on port ${PORT}`));
