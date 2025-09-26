@@ -9,28 +9,45 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
 
+    env:
+      # Fail fast if required secrets are missing
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      CLOUDFRONT_DIST: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+
     steps:
       # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Setup Node.js
+      # 2. Validate secrets
+      - name: Validate required secrets
+        run: |
+          : "${AWS_ACCESS_KEY_ID:?Missing AWS_ACCESS_KEY_ID}"
+          : "${AWS_SECRET_ACCESS_KEY:?Missing AWS_SECRET_ACCESS_KEY}"
+          : "${AWS_REGION:?Missing AWS_REGION}"
+          : "${S3_BUCKET:?Missing S3_BUCKET}"
+          : "${CLOUDFRONT_DIST:?Missing CLOUDFRONT_DISTRIBUTION_ID}"
+
+      # 3. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 20
 
-      # 3. Install frontend dependencies
+      # 4. Install frontend dependencies
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm install --legacy-peer-deps
 
-      # 4. Build frontend
+      # 5. Build frontend
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
 
-      # 5. Configure AWS credentials
+      # 6. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -38,26 +55,13 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 6. Deploy frontend to S3
+      # 7. Deploy frontend to S3
       - name: Deploy frontend to S3
-        run: |
-          if [ -n "${S3_BUCKET}" ]; then
-            aws s3 sync frontend/build/ s3://$S3_BUCKET --delete
-          else
-            echo "S3_BUCKET not defined, skipping deployment."
-          fi
-        env:
-          S3_BUCKET: ${{ secrets.S3_BUCKET }}
+        run: aws s3 sync frontend/build/ s3://$S3_BUCKET --delete
 
-      # 7. Invalidate CloudFront cache
+      # 8. Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         run: |
-          if [ -n "${CLOUDFRONT_DIST}" ]; then
-            aws cloudfront create-invalidation \
-              --distribution-id $CLOUDFRONT_DIST \
-              --paths "/*"
-          else
-            echo "CLOUDFRONT_DIST not defined, skipping invalidation."
-          fi
-        env:
-          CLOUDFRONT_DIST: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+          aws cloudfront create-invalidation \
+            --distribution-id $CLOUDFRONT_DIST \
+            --paths "/*"
