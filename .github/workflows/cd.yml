@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout repository
+      # 1. Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
         with:
@@ -23,11 +23,15 @@ jobs:
         with:
           node-version: 18
 
-      # 3. Verify frontend folder exists
-      - name: Verify frontend folder
+      # 3. Verify frontend folder and lockfile
+      - name: Verify frontend folder & lockfile
         run: |
           if [ ! -d "./frontend" ]; then
-            echo "Error: ./frontend folder does not exist!"
+            echo "Error: frontend folder does not exist!"
+            exit 1
+          fi
+          if [ ! -f "./frontend/package-lock.json" ]; then
+            echo "Error: frontend/package-lock.json missing!"
             exit 1
           fi
 
@@ -41,17 +45,23 @@ jobs:
         working-directory: ./frontend
         run: npm run build
 
-      # 6. Check required AWS secrets
-      - name: Check AWS secrets
+      # 6. Verify backend folder and lockfile (if backend deployment is needed)
+      - name: Verify backend folder & lockfile
         run: |
-          if [ -z "${{ secrets.AWS_ACCESS_KEY_ID }}" ] || \
-             [ -z "${{ secrets.AWS_SECRET_ACCESS_KEY }}" ] || \
-             [ -z "${{ secrets.AWS_REGION }}" ]; then
-            echo "Error: AWS secrets are not set!"
+          if [ ! -d "./backend" ]; then
+            echo "Warning: backend folder does not exist, skipping backend steps."
+          elif [ ! -f "./backend/package-lock.json" ]; then
+            echo "Error: backend/package-lock.json missing!"
             exit 1
           fi
 
-      # 7. Configure AWS credentials
+      # 7. Install backend dependencies (optional)
+      - name: Install backend dependencies
+        if: ${{ always() && (exists('backend/package-lock.json')) }}
+        working-directory: ./backend
+        run: npm ci
+
+      # 8. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -59,14 +69,14 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 8. Deploy to S3
-      - name: Deploy to S3
+      # 9. Deploy frontend to S3
+      - name: Deploy frontend to S3
         run: |
           echo "Deploying frontend to S3..."
           aws s3 sync frontend/build/ s3://aws-cloud-native-ecommerce-frontend --delete
           echo "Frontend deployed successfully!"
 
-      # 9. Optional: Invalidate CloudFront cache
+      # 10. Optional: Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         if: success() && ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
         run: |
