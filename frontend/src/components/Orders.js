@@ -16,7 +16,7 @@ function Orders() {
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/orders");
+      const res = await fetch("/api/orders" ,{ cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch orders");
       const data = await res.json();
       setOrders(data);
