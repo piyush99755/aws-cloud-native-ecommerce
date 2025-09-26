@@ -3,29 +3,31 @@ name: CD
 on:
   push:
     branches:
-      - main  # deploys on push to main branch
+      - main  # deploy on push to main branch
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout code
+      # 1. Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # 2. Set up Node.js
+      # 2. Setup Node.js
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
           node-version: 18
 
-      # 3. Install dependencies
-      - name: Install dependencies
+      # 3. Install frontend dependencies
+      - name: Install frontend dependencies
+        working-directory: ./frontend
         run: npm ci
 
-      # 4. Build React app
-      - name: Build
+      # 4. Build frontend
+      - name: Build frontend
+        working-directory: ./frontend
         run: npm run build
 
       # 5. Configure AWS credentials
@@ -39,10 +41,10 @@ jobs:
       # 6. Deploy to S3
       - name: Deploy to S3
         run: |
-          aws s3 sync build/ s3://aws-cloud-native-ecommerce-frontend --delete
-          echo "Deployed to S3 successfully!"
+          aws s3 sync frontend/build/ s3://aws-cloud-native-ecommerce-frontend --delete
+          echo "Frontend deployed to S3 successfully!"
 
-      # 7. Invalidate CloudFront cache (optional)
+      # 7. Optional: Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
         if: success()
         run: |
