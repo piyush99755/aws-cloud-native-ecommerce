@@ -46,13 +46,11 @@ function Orders() {
   const handleDelete = (orderId) => {
     showConfirm("Are you sure you want to delete this order?", async () => {
       try {
+        console.log("Sending DELETE request for order:", orderId);
         const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete order");
 
-        // Refetch orders after deletion
         await fetchOrders();
-
-        // Show simple alert
         showAlert("Order deleted successfully");
       } catch (err) {
         console.error(err);
@@ -109,8 +107,10 @@ function Orders() {
               {modal.onConfirm ? (
                 <>
                   <button
-                    onClick={() => {
-                      modal.onConfirm?.();
+                    onClick={async () => {
+                      if (modal.onConfirm) {
+                        await modal.onConfirm(); // Await async confirm function
+                      }
                       setModal({ visible: false, message: "", onConfirm: null });
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mr-2"
