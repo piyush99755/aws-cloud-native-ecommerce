@@ -5,9 +5,15 @@ function Orders() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // For custom modal
-  const [modal, setModal] = useState({ visible: false, message: "", onConfirm: null });
+  // Modal state
+  const [modal, setModal] = useState({
+    visible: false,
+    type: "", // "confirm" | "alert"
+    message: "",
+    onConfirm: null,
+  });
 
+  // Fetch orders from backend
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -27,42 +33,37 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Show confirmation modal
+  // Show Confirm modal
   const showConfirm = (message, onConfirm) => {
-    setModal({ visible: true, message, onConfirm });
+    setModal({ visible: true, type: "confirm", message, onConfirm });
   };
 
-  const handleDelete = async (orderId) => {
-  showConfirm("Are you sure you want to delete this order?", async () => {
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete order");
-
-      // Refetch orders after deletion to ensure frontend is synced
-      await fetchOrders();
-
-      showAlert("Order deleted successfully");
-    } catch (err) {
-      console.error(err);
-      showAlert("Failed to delete order");
-    }
-  });
-};
-
-
-  // Show alert modal
+  // Show Alert modal
   const showAlert = (message) => {
-    setModal({ visible: true, message, onConfirm: () => setModal({ visible: false }) });
+    setModal({ visible: true, type: "alert", message, onConfirm: null });
   };
 
-  if (loading)
-    return <p className="text-center mt-10 text-gray-700">Loading orders...</p>;
+  // Handle order deletion
+  const handleDelete = (orderId) => {
+    showConfirm("Are you sure you want to delete this order?", async () => {
+      try {
+        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+        if (!res.ok) throw new Error("Failed to delete order");
 
-  if (error)
-    return <p className="text-center mt-10 text-red-500">{error}</p>;
+        // Refresh orders from backend
+        await fetchOrders();
 
-  if (!orders.length)
-    return <p className="text-center mt-10 text-gray-700">No orders yet.</p>;
+        showAlert("Order deleted successfully");
+      } catch (err) {
+        console.error(err);
+        showAlert("Failed to delete order");
+      }
+    });
+  };
+
+  if (loading) return <p className="text-center mt-10 text-gray-700">Loading orders...</p>;
+  if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
+  if (!orders.length) return <p className="text-center mt-10 text-gray-700">No orders yet.</p>;
 
   return (
     <>
@@ -82,10 +83,7 @@ function Orders() {
             <p className="text-gray-600">Total: ${order.total}</p>
             <div className="mt-2 border-t pt-2">
               {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex justify-between items-center py-1"
-                >
+                <div key={item.id} className="flex justify-between items-center py-1">
                   <div className="flex items-center space-x-2">
                     <img
                       src={item.image}
@@ -94,9 +92,7 @@ function Orders() {
                     />
                     <span>{item.name}</span>
                   </div>
-                  <span>
-                    {item.quantity} x ${item.price}
-                  </span>
+                  <span>{item.quantity} x ${item.price}</span>
                 </div>
               ))}
             </div>
@@ -110,23 +106,35 @@ function Orders() {
           <div className="bg-white rounded-lg shadow-lg p-6 w-96 text-center">
             <p className="mb-4">{modal.message}</p>
             <div className="flex justify-center gap-4">
-              {modal.onConfirm && (
+              {/* Confirm buttons */}
+              {modal.type === "confirm" && (
+                <>
+                  <button
+                    onClick={() => {
+                      modal.onConfirm?.();
+                      setModal({ visible: false, type: "", message: "", onConfirm: null });
+                    }}
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  >
+                    Yes
+                  </button>
+                  <button
+                    onClick={() => setModal({ visible: false, type: "", message: "", onConfirm: null })}
+                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
+                  >
+                    No
+                  </button>
+                </>
+              )}
+              {/* Alert button */}
+              {modal.type === "alert" && (
                 <button
-                  onClick={() => {
-                    modal.onConfirm();
-                    setModal({ visible: false });
-                  }}
-                  className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
+                  onClick={() => setModal({ visible: false, type: "", message: "", onConfirm: null })}
+                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                 >
-                  Yes
+                  OK
                 </button>
               )}
-              <button
-                onClick={() => setModal({ visible: false })}
-                className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-              >
-                {modal.onConfirm ? "No" : "OK"}
-              </button>
             </div>
           </div>
         </div>
