@@ -24,32 +24,9 @@ jobs:
       # 3. Install frontend dependencies
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: |
-          if [ -f "package-lock.json" ]; then
-            echo "Installing frontend dependencies..."
-            npm ci
-          else
-            echo "Error: frontend/package-lock.json missing!"
-            exit 1
-          fi
+        run: npm ci
 
       # 4. Build frontend
       - name: Build frontend
         working-directory: ./frontend
-        run: |
-          if [ -f "package-lock.json" ]; then
-            npm run build
-          else
-            echo "Skipping frontend build: package-lock.json missing"
-          fi
-
-      # 5. Optional: Install backend dependencies
-      - name: Install backend dependencies
-        working-directory: ./backend
-        run: |
-          if [ -f "package-lock.json" ]; then
-            echo "Installing backend dependencies..."
-            npm ci
-          else
-            echo "No backend detected. Skipping backend installation."
-          fi
+        run: npm run build
