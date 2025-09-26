@@ -60,40 +60,49 @@ app.get("/api/products", async (req,res)=>{
   }
 });
 
-//orders routes
+// -------------------------
+// Orders Routes
+// -------------------------
+
+// CREATE new order
 app.post("/api/orders", async (req, res) => {
   try {
-    const {items, total} = req.body;
+    const { items, total } = req.body;
 
-    //insert order into orders table... 
-    const result = await pool.query(
-      "INSERT INTO orders (total) VALUES ($1) RETURNING (id)",
-      [total] 
-    );
-    const orderId = result.rows[0].id;
-
-    //insert order items into orders_items table...
-    for (const item of items){
-      await pool.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
-        VALUES($1, $2, $3, $4, $5, $6)`,
-        [orderId, item.id, item.quantity, item.price, item.name, item.image]
-      );
+    if (!items || !items.length) {
+      return res.status(400).json({ error: "Order items are required" });
     }
 
-    res.json({message:"Order places successfully", orderId});
-}
-  catch(err) {
-    console.error("Error saving order", err);
-    res.status(500).json({error: "failed to save order"});
+    // Insert order
+    const orderResult = await pool.query(
+      "INSERT INTO orders (total) VALUES ($1) RETURNING id",
+      [total]
+    );
+    const orderId = orderResult.rows[0].id;
+    console.log("Inserted new order ID:", orderId);
+
+    // Insert order items
+    for (const item of items) {
+      const itemResult = await pool.query(
+        `INSERT INTO order_items
+        (order_id, product_id, quantity, price, name, image)
+        VALUES ($1, $2, $3, $4, $5, $6) RETURNING id`,
+        [orderId, item.id, item.quantity, item.price, item.name, item.image]
+      );
+      console.log("Inserted order item ID:", itemResult.rows[0].id);
+    }
+
+    res.json({ message: "Order placed successfully", orderId });
+  } catch (err) {
+    console.error("Error saving order:", err);
+    res.status(500).json({ error: "Failed to save order" });
   }
 });
 
+// FETCH all orders
 app.get("/api/orders", async (req, res) => {
   try {
-    const ordersResult = await pool.query(
-      "SELECT * FROM orders ORDER BY id DESC"
-    );
+    const ordersResult = await pool.query("SELECT * FROM orders ORDER BY id DESC");
     const orders = [];
 
     for (const order of ordersResult.rows) {
@@ -101,6 +110,7 @@ app.get("/api/orders", async (req, res) => {
         "SELECT * FROM order_items WHERE order_id = $1",
         [order.id]
       );
+
       orders.push({
         ...order,
         items: itemsResult.rows,
@@ -114,29 +124,37 @@ app.get("/api/orders", async (req, res) => {
   }
 });
 
-
-// Delete an order by ID
+// DELETE an order
 app.delete("/api/orders/:id", async (req, res) => {
-  const orderId = parseInt(req.params.id, 10); // Convert to integer
-  console.log("Deleting order ID:", orderId);
+  const orderId = parseInt(req.params.id, 10);
+  console.log("Attempting to delete order ID:", orderId);
 
   try {
-    // Delete order items first (foreign key)
-    await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
+    // Delete order items first
+    const deletedItems = await pool.query(
+      "DELETE FROM order_items WHERE order_id = $1 RETURNING *",
+      [orderId]
+    );
+    console.log("Deleted order items count:", deletedItems.rowCount);
 
     // Delete the order itself
-    const result = await pool.query("DELETE FROM orders WHERE id = $1 RETURNING *", [orderId]);
+    const deletedOrder = await pool.query(
+      "DELETE FROM orders WHERE id = $1 RETURNING *",
+      [orderId]
+    );
 
-    if (result.rowCount === 0) {
+    if (deletedOrder.rowCount === 0) {
       return res.status(404).json({ error: "Order not found" });
     }
 
+    console.log("Deleted order ID:", orderId);
     res.json({ message: "Order deleted successfully" });
   } catch (err) {
     console.error("Error deleting order:", err);
     res.status(500).json({ error: "Failed to delete order" });
   }
 });
+
 
 
 
