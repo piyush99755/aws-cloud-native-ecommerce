@@ -4,14 +4,15 @@ function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Modal state
   const [modal, setModal] = useState({
     visible: false,
     message: "",
     onConfirm: null,
   });
-  const [deleting, setDeleting] = useState(null); // track order being deleted
 
-  // Fetch orders from backend
+  // Centralized fetch orders
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -41,25 +42,19 @@ function Orders() {
     setModal({ visible: true, message, onConfirm: null });
   };
 
-  // Handle order deletion
+  // Handle deletion
   const handleDelete = (orderId) => {
     showConfirm("Are you sure you want to delete this order?", async () => {
       try {
-        setDeleting(orderId); // mark as deleting
-        // Optimistic update: remove order from UI immediately
-        setOrders((prev) => prev.filter((o) => o.id !== orderId));
-
-        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE", cache: "no-store" });
+        console.log("Sending DELETE request for order:", orderId);
+        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete order");
 
+        await fetchOrders(); // Refresh orders
         showAlert("Order deleted successfully");
       } catch (err) {
         console.error(err);
         showAlert("Failed to delete order");
-        // Re-fetch to restore state if deletion fails
-        await fetchOrders();
-      } finally {
-        setDeleting(null);
       }
     });
   };
@@ -70,7 +65,6 @@ function Orders() {
 
   return (
     <>
-      {/* Orders List */}
       <div className="space-y-6">
         {orders.map((order) => (
           <div key={order.id} className="bg-white shadow p-4 rounded-lg">
@@ -78,22 +72,17 @@ function Orders() {
               <h3 className="font-semibold text-lg">Order #{order.id}</h3>
               <button
                 onClick={() => handleDelete(order.id)}
-                disabled={deleting === order.id}
-                className={`px-2 py-1 rounded text-white ${deleting === order.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-red-500 hover:bg-red-600'}`}
+                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
               >
-                {deleting === order.id ? 'Deleting...' : 'Delete'}
+                Delete
               </button>
             </div>
             <p className="text-gray-600">Total: ${order.total}</p>
             <div className="mt-2 border-t pt-2">
-              {order.items?.map((item) => (
+              {order.items.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-1">
                   <div className="flex items-center space-x-2">
-                    <img
-                      src={item.image}
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
+                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
                     <span>{item.name}</span>
                   </div>
                   <span>{item.quantity} x ${item.price}</span>
@@ -109,20 +98,15 @@ function Orders() {
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
           <div className="bg-white rounded-lg shadow-lg p-6 w-96 text-center">
             <p className="mb-4">{modal.message}</p>
-            <div className="flex justify-center">
+            <div className="flex justify-center gap-4">
               {modal.onConfirm ? (
                 <>
                   <button
                     onClick={async () => {
-                      try {
-                        if (modal.onConfirm) await modal.onConfirm();
-                      } catch (e) {
-                        console.error(e);
-                      } finally {
-                        setModal({ visible: false, message: "", onConfirm: null });
-                      }
+                      if (modal.onConfirm) await modal.onConfirm();
+                      setModal({ visible: false, message: "", onConfirm: null });
                     }}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 mr-2"
+                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
                   >
                     Yes
                   </button>
