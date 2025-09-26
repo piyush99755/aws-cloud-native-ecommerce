@@ -7,7 +7,7 @@ function LandingPage({ onSignIn, onGuestMode }) {
         Welcome to <span className="text-gray-800">Cloud E-Commerce</span>
       </h1>
       <p className="text-lg text-gray-700 mb-8 max-w-2xl">
-        Explore our e-commerce platform. Browse products, add to cart, and experience
+        Explore our E-commerce platform. Browse products, add to cart, and experience
         checkout—all without creating an account!
       </p>
       <div className="space-x-4">
