@@ -6,7 +6,7 @@ import { useCart } from "./CartContext";
 function Products({ guestMode }) {
   const auth = useAuth();
   const { cart, addToCart, decrementFromCart } = useCart();
-  const [products, setProducts] = useState([]);
+  const [products, setProducts] = useState([]); 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
@@ -20,9 +20,9 @@ function Products({ guestMode }) {
           data = await getProducts(); // guest fetch
         }
 
-        setProducts(data || []);
+        setProducts(data); //  always an array thanks to productService.js
       } catch (err) {
-        console.error(err);
+        console.error("Error fetching products:", err);
         if (err.response?.status === 403) {
           setError("Access denied. Please sign in to view products.");
         } else {
@@ -36,12 +36,19 @@ function Products({ guestMode }) {
     fetchProducts();
   }, [auth.isAuthenticated, auth.user?.access_token, guestMode]);
 
-  if (!auth.isAuthenticated && !guestMode)
-    return <p className="text-center mt-10 text-lg">Please sign in to view products.</p>;
+  // UI states
+  if (!auth.isAuthenticated && !guestMode) {
+    return (
+      <p className="text-center mt-10 text-lg">
+        Please sign in to view products.
+      </p>
+    );
+  }
   if (loading) return <p className="text-center mt-10 text-lg">Loading Products...</p>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
   if (!products.length) return <p className="text-center mt-10 text-lg">No products found.</p>;
 
+  // Render products
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6">Products</h2>
