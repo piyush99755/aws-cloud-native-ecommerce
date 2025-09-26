@@ -21,28 +21,56 @@ jobs:
         with:
           node-version: 20
 
-      # 3. Install frontend dependencies
+      # 3. Install frontend dependencies safely
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "Installing frontend dependencies..."
+            npm ci
+          else
+            echo "Error: frontend/package-lock.json missing!"
+            exit 1
+          fi
 
       # 4. Run frontend tests
       - name: Run frontend tests
         working-directory: ./frontend
-        run: npm test -- --watchAll=false
+        run: |
+          if [ -f "package-lock.json" ]; then
+            npm test -- --watchAll=false
+          else
+            echo "Skipping frontend tests: package-lock.json missing"
+          fi
 
       # 5. Build frontend
       - name: Build frontend
         working-directory: ./frontend
-        run: npm run build
+        run: |
+          if [ -f "package-lock.json" ]; then
+            npm run build
+          else
+            echo "Skipping frontend build: package-lock.json missing"
+          fi
 
-      # 6. Optional: backend tests/build (if you have backend)
+      # 6. Optional: Install backend dependencies safely
       - name: Install backend dependencies
-        if: ${{ exists('backend/package-lock.json') }}
         working-directory: ./backend
-        run: npm ci
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "Installing backend dependencies..."
+            npm ci
+          else
+            echo "No backend detected. Skipping backend installation."
+          fi
 
+      # 7. Optional: Run backend tests safely
       - name: Run backend tests
-        if: ${{ exists('backend/package-lock.json') }}
         working-directory: ./backend
-        run: npm test
+        run: |
+          if [ -f "package-lock.json" ]; then
+            echo "Running backend tests..."
+            npm test
+          else
+            echo "No backend detected. Skipping backend tests."
+          fi
