@@ -102,8 +102,11 @@ function Orders() {
 
       {/* Modal */}
       {modal.visible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96 text-center">
+        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 transition-opacity duration-300 ease-out">
+          <div
+            className={`bg-white rounded-lg shadow-lg p-6 w-96 text-center transform transition-transform duration-300 ease-out
+              ${modal.visible ? "scale-100 opacity-100" : "scale-95 opacity-0"}`}
+          >
             <p className="mb-4">{modal.message}</p>
             <div className="flex justify-center gap-4">
               {/* Confirm buttons */}
@@ -119,7 +122,9 @@ function Orders() {
                     Yes
                   </button>
                   <button
-                    onClick={() => setModal({ visible: false, type: "", message: "", onConfirm: null })}
+                    onClick={() =>
+                      setModal({ visible: false, type: "", message: "", onConfirm: null })
+                    }
                     className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                   >
                     No
@@ -129,7 +134,9 @@ function Orders() {
               {/* Alert button */}
               {modal.type === "alert" && (
                 <button
-                  onClick={() => setModal({ visible: false, type: "", message: "", onConfirm: null })}
+                  onClick={() =>
+                    setModal({ visible: false, type: "", message: "", onConfirm: null })
+                  }
                   className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                 >
                   OK
