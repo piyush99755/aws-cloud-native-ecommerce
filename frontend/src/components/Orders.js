@@ -33,17 +33,22 @@ function Orders() {
   };
 
   const handleDelete = async (orderId) => {
-    showConfirm("Are you sure you want to delete this order?", async () => {
-      try {
-        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete order");
-        setOrders((prev) => prev.filter((order) => order.id !== orderId));
-      } catch (err) {
-        console.error(err);
-        showAlert("Failed to delete order");
-      }
-    });
-  };
+  showConfirm("Are you sure you want to delete this order?", async () => {
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete order");
+
+      // Refetch orders after deletion to ensure frontend is synced
+      await fetchOrders();
+
+      showAlert("Order deleted successfully");
+    } catch (err) {
+      console.error(err);
+      showAlert("Failed to delete order");
+    }
+  });
+};
+
 
   // Show alert modal
   const showAlert = (message) => {
