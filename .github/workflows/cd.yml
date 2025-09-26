@@ -1,87 +1,59 @@
-name: CD
+name: CI
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
-        with:
-          fetch-depth: 0
 
-      # 2. Setup Node.js
-      - name: Setup Node.js
+      # 2. Set up Node.js
+      - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: 20  # Keep consistent with CI
+          node-version: 20
 
-      # 3. Verify frontend folder and lockfile
-      - name: Verify frontend folder & lockfile
-        run: |
-          if [ ! -d "./frontend" ]; then
-            echo "Error: frontend folder does not exist!"
-            exit 1
-          fi
-          if [ ! -f "./frontend/package-lock.json" ]; then
-            echo "Error: frontend/package-lock.json missing!"
-            exit 1
-          fi
-
-      # 4. Install frontend dependencies
+      # 3. Install frontend dependencies
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm ci
+
+      # 4. Run frontend tests
+      - name: Run frontend tests
+        working-directory: ./frontend
+        run: npm test -- --watchAll=false
 
       # 5. Build frontend
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
 
-      # 6. Verify backend folder and lockfile (optional)
-      - name: Verify backend folder & lockfile
+      # 6. Optional: Install backend dependencies if backend exists
+      - name: Install backend dependencies
         run: |
-          if [ ! -d "./backend" ]; then
-            echo "Warning: backend folder does not exist, skipping backend steps."
-          elif [ ! -f "./backend/package-lock.json" ]; then
-            echo "Error: backend/package-lock.json missing!"
-            exit 1
+          if [ -f "./backend/package-lock.json" ]; then
+            echo "Installing backend dependencies..."
+            cd backend
+            npm ci
+          else
+            echo "No backend detected. Skipping backend installation."
           fi
 
-      # 7. Install backend dependencies (optional)
-      - name: Install backend dependencies
-        if: ${{ exists('backend/package-lock.json') }}
-        working-directory: ./backend
-        run: npm ci
-
-      # 8. Configure AWS credentials
-      - name: Configure AWS credentials
-        if: ${{ secrets.AWS_ACCESS_KEY_ID != '' && secrets.AWS_SECRET_ACCESS_KEY != '' && secrets.AWS_REGION != '' }}
-        uses: aws-actions/configure-aws-credentials@v2
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      # 9. Deploy frontend to S3
-      - name: Deploy frontend to S3
-        if: ${{ secrets.S3_BUCKET != '' }}
+      # 7. Optional: Run backend tests if backend exists
+      - name: Run backend tests
         run: |
-          echo "Deploying frontend to S3..."
-          aws s3 sync frontend/build/ s3://${{ secrets.S3_BUCKET }} --delete
-          echo "Frontend deployed successfully!"
-
-      # 10. Optional: Invalidate CloudFront cache
-      - name: Invalidate CloudFront cache
-        if: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
-        run: |
-          echo "Invalidating CloudFront cache..."
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
-          echo "CloudFront cache invalidated."
+          if [ -f "./backend/package-lock.json" ]; then
+            echo "Running backend tests..."
+            cd backend
+            npm test
+          else
+            echo "No backend detected. Skipping backend tests."
+          fi
