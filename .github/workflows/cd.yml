@@ -13,6 +13,8 @@ jobs:
       # 1. Checkout the repository
       - name: Checkout repository
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # ensures full checkout
 
       # 2. Setup Node.js
       - name: Setup Node.js
@@ -20,17 +22,22 @@ jobs:
         with:
           node-version: 18
 
-      # 3. Install frontend dependencies
+      # 3. Upgrade npm (optional but ensures npm ci works)
+      - name: Upgrade npm
+        run: npm install -g npm@9
+        working-directory: ./frontend
+
+      # 4. Install frontend dependencies
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: npm ci
 
-      # 4. Build frontend
+      # 5. Build frontend
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
 
-      # 5. Configure AWS credentials
+      # 6. Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -38,15 +45,15 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      # 6. Deploy to S3
+      # 7. Deploy to S3
       - name: Deploy to S3
         run: |
           aws s3 sync frontend/build/ s3://aws-cloud-native-ecommerce-frontend --delete
           echo "Frontend deployed to S3 successfully!"
 
-      # 7. Optional: Invalidate CloudFront cache
+      # 8. Optional: Invalidate CloudFront cache
       - name: Invalidate CloudFront cache
-        if: success()
+        if: success() && ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID != '' }}
         run: |
           aws cloudfront create-invalidation \
             --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
