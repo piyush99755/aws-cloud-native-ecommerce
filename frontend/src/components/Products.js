@@ -20,7 +20,10 @@ function Products({ guestMode }) {
           data = await getProducts(); // guest fetch
         }
 
-        setProducts(data); //  always an array thanks to productService.js
+        console.log("Products API response:", data);
+
+        //  Always ensure products is an array
+        setProducts(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error("Error fetching products:", err);
         if (err.response?.status === 403) {
@@ -48,58 +51,59 @@ function Products({ guestMode }) {
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
   if (!products.length) return <p className="text-center mt-10 text-lg">No products found.</p>;
 
-  // Render products
+  // Render products safely
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6">Products</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => {
-          const cartItem = cart.find((item) => item.id === product.id);
+        {Array.isArray(products) &&
+          products.map((product) => {
+            const cartItem = cart.find((item) => item.id === product.id);
 
-          return (
-            <div
-              key={product.id}
-              className="bg-white shadow-md rounded-lg p-4 flex flex-col hover:shadow-xl transition"
-            >
-              {/* Product Image */}
-              <img
-                src={product.image || "/placeholder.png"}
-                alt={product.name}
-                className="h-40 w-full object-contain mb-4"
-              />
+            return (
+              <div
+                key={product.id}
+                className="bg-white shadow-md rounded-lg p-4 flex flex-col hover:shadow-xl transition"
+              >
+                {/* Product Image */}
+                <img
+                  src={product.image || "/placeholder.png"}
+                  alt={product.name}
+                  className="h-40 w-full object-contain mb-4"
+                />
 
-              {/* Product Info */}
-              <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
-              <p className="text-gray-700 mb-4">${product.price}</p>
+                {/* Product Info */}
+                <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
+                <p className="text-gray-700 mb-4">${product.price}</p>
 
-              {/* Cart Controls */}
-              {cartItem ? (
-                <div className="flex items-center justify-between mt-auto">
+                {/* Cart Controls */}
+                {cartItem ? (
+                  <div className="flex items-center justify-between mt-auto">
+                    <button
+                      className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                      onClick={() => decrementFromCart(product.id)}
+                    >
+                      -
+                    </button>
+                    <span>{cartItem.quantity}</span>
+                    <button
+                      className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                      onClick={() => addToCart(product)}
+                    >
+                      +
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
-                    onClick={() => decrementFromCart(product.id)}
-                  >
-                    -
-                  </button>
-                  <span>{cartItem.quantity}</span>
-                  <button
-                    className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                    className="mt-auto bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
                     onClick={() => addToCart(product)}
                   >
-                    +
+                    Add to Cart
                   </button>
-                </div>
-              ) : (
-                <button
-                  className="mt-auto bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
-                  onClick={() => addToCart(product)}
-                >
-                  Add to Cart
-                </button>
-              )}
-            </div>
-          );
-        })}
+                )}
+              </div>
+            );
+          })}
       </div>
     </div>
   );
