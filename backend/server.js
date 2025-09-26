@@ -122,7 +122,7 @@ app.delete("/api/orders/:id", async (req, res) => {
 
   try {
     // Delete order items first (foreign key)
-    await pool.query("DELETE FROM orders_items WHERE order_id = $1", [orderId]);
+    await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
 
     // Delete the order itself
     const result = await pool.query("DELETE FROM orders WHERE id = $1 RETURNING *", [orderId]);
