@@ -20,7 +20,7 @@ jobs:
         with:
           node-version: 20
 
-      # 3. Install frontend dependencies safely
+      # 3. Install frontend dependencies
       - name: Install frontend dependencies
         working-directory: ./frontend
         run: |
