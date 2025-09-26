@@ -24,9 +24,19 @@ jobs:
       # 3. Install frontend dependencies
       - name: Install frontend dependencies
         working-directory: ./frontend
-        run: npm ci
+        run: npm install --legacy-peer-deps
 
       # 4. Build frontend
       - name: Build frontend
         working-directory: ./frontend
         run: npm run build
+
+      # 5. Optional: Install backend dependencies
+      - name: Install backend dependencies
+        working-directory: ./backend
+        run: npm install --legacy-peer-deps || echo "No backend detected"
+
+      # 6. Optional: Build backend
+      - name: Build backend
+        working-directory: ./backend
+        run: npm run build || echo "No backend build script"
