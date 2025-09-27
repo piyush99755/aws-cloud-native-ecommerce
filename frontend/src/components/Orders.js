@@ -1,21 +1,19 @@
 import React, { useState, useEffect } from "react";
 
-// --- Define addOrder outside the component ---
-let addOrder; // We'll assign it inside the component
+// --- Global reference for Checkout.js ---
+let addOrder;
 
 function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Modal state
   const [modal, setModal] = useState({
     visible: false,
     message: "",
     onConfirm: null,
   });
 
-  // Centralized fetch orders
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -24,7 +22,7 @@ function Orders() {
       const data = await res.json();
       setOrders(data);
     } catch (err) {
-      console.error(err);
+      console.error(" Error fetching orders:", err);
       setError("Error fetching orders");
     } finally {
       setLoading(false);
@@ -35,41 +33,37 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Assign addOrder here so it's accessible outside
+  // Allow Checkout.js to add order instantly
   addOrder = (newOrder) => {
+    if (!newOrder.items) newOrder.items = [];
     setOrders((prev) => [newOrder, ...prev]);
   };
 
-  // Show confirm modal
-  const showConfirm = (message, onConfirm) => {
+  const showConfirm = (message, onConfirm) =>
     setModal({ visible: true, message, onConfirm });
-  };
 
-  // Show alert modal
-  const showAlert = (message) => {
+  const showAlert = (message) =>
     setModal({ visible: true, message, onConfirm: null });
-  };
 
-  // Handle deletion
   const handleDelete = (orderId) => {
     showConfirm("Are you sure you want to delete this order?", async () => {
       try {
-        console.log("Sending DELETE request for order:", orderId);
+        console.log(" Deleting order:", orderId);
         const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete order");
 
-        await fetchOrders(); // Refresh orders
+        await fetchOrders();
         showAlert("Order deleted successfully");
       } catch (err) {
-        console.error(err);
+        console.error(" Delete failed:", err);
         showAlert("Failed to delete order");
       }
     });
   };
 
-  if (loading) return <p className="text-center mt-10 text-gray-700">Loading orders...</p>;
+  if (loading) return <p className="text-center mt-10">Loading orders...</p>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
-  if (!orders.length) return <p className="text-center mt-10 text-gray-700">No orders yet.</p>;
+  if (!orders.length) return <p className="text-center mt-10">No orders yet.</p>;
 
   return (
     <>
@@ -88,12 +82,21 @@ function Orders() {
             <p className="text-gray-600">Total: ${order.total}</p>
             <div className="mt-2 border-t pt-2">
               {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-1">
+                <div
+                  key={item.id}
+                  className="flex justify-between items-center py-1"
+                >
                   <div className="flex items-center space-x-2">
-                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
+                    <img
+                      src={item.image}
+                      alt={item.name}
+                      className="w-12 h-12 object-cover rounded"
+                    />
                     <span>{item.name}</span>
                   </div>
-                  <span>{item.quantity} x ${item.price}</span>
+                  <span>
+                    {item.quantity} × ${item.price}
+                  </span>
                 </div>
               ))}
             </div>
@@ -119,7 +122,9 @@ function Orders() {
                     Yes
                   </button>
                   <button
-                    onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
+                    onClick={() =>
+                      setModal({ visible: false, message: "", onConfirm: null })
+                    }
                     className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                   >
                     No
@@ -127,7 +132,9 @@ function Orders() {
                 </>
               ) : (
                 <button
-                  onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
+                  onClick={() =>
+                    setModal({ visible: false, message: "", onConfirm: null })
+                  }
                   className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                 >
                   OK

@@ -3,8 +3,9 @@ import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useCart } from "./CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
+import { addOrder } from "./Orders"; // Import addOrder hook
 
-function Checkout({ guestMode, onOrderPlaced }) {
+function Checkout({ guestMode }) {
   const { cart, clearCart } = useCart();
   const stripe = useStripe();
   const elements = useElements();
@@ -14,14 +15,6 @@ function Checkout({ guestMode, onOrderPlaced }) {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
-
-  if (!guestMode && cart.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-700">Add items to cart to checkout.</p>
-      </div>
-    );
-  }
 
   const handlePay = async () => {
     if (!stripe || !elements) return;
@@ -38,12 +31,12 @@ function Checkout({ guestMode, onOrderPlaced }) {
         payment_method: { card: elements.getElement(CardElement) },
       });
 
-      if (result.error) setMessage(result.error.message);
-      else if (result.paymentIntent.status === "succeeded") {
+      if (result.error) {
+        setMessage(result.error.message);
+      } else if (result.paymentIntent.status === "succeeded") {
         setMessage("Payment successful!");
 
         if (!guestMode) {
-          // Send order to backend
           const token = auth.user?.access_token;
           const orderRes = await fetch("/api/orders", {
             method: "POST",
@@ -54,10 +47,8 @@ function Checkout({ guestMode, onOrderPlaced }) {
             body: JSON.stringify({ items: cart, total: total.toFixed(2) }),
           });
 
-          const data = await orderRes.json();
-
-          // Update Orders.js state instantly
-          onOrderPlaced?.(data.order);
+          const newOrder = await orderRes.json();
+          addOrder(newOrder); // Update Orders.js instantly
         }
 
         clearCart();
@@ -76,10 +67,16 @@ function Checkout({ guestMode, onOrderPlaced }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {cart.map((item) => (
           <div key={item.id} className="flex items-center bg-white shadow rounded-lg p-4">
-            <img src={item.image || "/placeholder.png"} alt={item.name} className="w-20 h-20 object-cover rounded mr-4" />
+            <img
+              src={item.image || "/placeholder.png"}
+              alt={item.name}
+              className="w-20 h-20 object-cover rounded mr-4"
+            />
             <div className="flex flex-col flex-1">
               <p className="font-semibold">{item.name}</p>
-              <p className="text-gray-700">${item.price} × {item.quantity}</p>
+              <p className="text-gray-700">
+                ${item.price} × {item.quantity}
+              </p>
             </div>
           </div>
         ))}
@@ -100,7 +97,13 @@ function Checkout({ guestMode, onOrderPlaced }) {
       </button>
 
       {message && (
-        <p className={`mt-4 ${message.toLowerCase().includes("success") ? "text-green-600" : "text-red-500"}`}>
+        <p
+          className={`mt-4 ${
+            message.toLowerCase().includes("success")
+              ? "text-green-600"
+              : "text-red-500"
+          }`}
+        >
           {message}
         </p>
       )}
