@@ -26,14 +26,14 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
-  // Redirect authenticated users to /products
+  // Redirect authenticated users to /products after tokens are ready
   useEffect(() => {
-    if (auth.isAuthenticated) {
+    if (!auth.isLoading && auth.isAuthenticated && auth.user) {
       navigate("/products");
       setGuestMode(false);
       localStorage.setItem("guestMode", false);
     }
-  }, [auth.isAuthenticated, navigate]);
+  }, [auth.isLoading, auth.isAuthenticated, auth.user, navigate]);
 
   // Sign in / out handlers
   const handleSignOut = () => {
@@ -61,15 +61,16 @@ function App() {
     navigate("/products");
   };
 
-  // Only show loading screen while Auth is initializing
-  if (auth.isLoading)
+  // Show loading while tokens are being parsed
+  if (auth.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-xl font-semibold text-gray-700 animate-pulse">
-          Loading...
+          Redirecting...
         </p>
       </div>
     );
+  }
 
   if (auth.error) return <div>Error: {auth.error.message}</div>;
 
