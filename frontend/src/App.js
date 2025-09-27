@@ -13,14 +13,11 @@ import { CartProvider } from "./components/CartContext";
 import "./App.css";
 import "./styles/components.css";
 
-// Stripe
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
 function App() {
   const auth = useAuth();
   const navigate = useNavigate();
-
-  // Persist guestMode across reloads
   const [guestMode, setGuestMode] = useState(() => {
     const saved = localStorage.getItem("guestMode");
     return saved ? JSON.parse(saved) : false;
@@ -35,7 +32,6 @@ function App() {
     }
   }, [auth.isLoading, auth.isAuthenticated, auth.user, navigate]);
 
-  // Sign in / out handlers
   const handleSignOut = () => {
     auth.removeUser();
     setGuestMode(false);
@@ -63,7 +59,6 @@ function App() {
     navigate("/products", { replace: true });
   };
 
-  // Show loading while tokens are being parsed
   if (auth.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -91,50 +86,27 @@ function App() {
 
           <main className="max-w-6xl mx-auto px-4">
             <Routes>
-              {/* Landing page */}
               <Route
                 path="/"
                 element={
-                  isUser ? (
-                    <Navigate to="/products" replace />
-                  ) : (
-                    <LandingPage
-                      onSignIn={handleSignIn}
-                      onGuestMode={handleGuestMode}
-                    />
-                  )
+                  isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
                 }
               />
-
-              {/* Main app routes */}
               <Route path="/products" element={<Products guestMode={guestMode} />} />
               <Route path="/cart" element={<Cart guestMode={guestMode} />} />
               <Route
                 path="/checkout"
                 element={
-                  auth.isAuthenticated || guestMode ? (
-                    <Checkout guestMode={guestMode} auth={auth} />
-                  ) : (
-                    <Navigate to="/" replace />
-                  )
+                  auth.isAuthenticated || guestMode ? <Checkout guestMode={guestMode} /> : <Navigate to="/" replace />
                 }
               />
               <Route
                 path="/orders"
-                element={
-                  auth.isAuthenticated ? <Orders /> : <Navigate to="/" replace />
-                }
+                element={auth.isAuthenticated ? <Orders /> : <Navigate to="/" replace />}
               />
-
-              {/* Catch-all for unknown routes */}
               <Route
                 path="*"
-                element={
-                  isUser ? <Navigate to="/products" replace /> : <LandingPage
-                    onSignIn={handleSignIn}
-                    onGuestMode={handleGuestMode}
-                  />
-                }
+                element={isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />}
               />
             </Routes>
           </main>

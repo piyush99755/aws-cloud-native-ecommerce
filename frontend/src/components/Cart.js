@@ -3,7 +3,9 @@ import { Link } from "react-router-dom";
 import { useCart } from "./CartContext";
 
 function Cart({ guestMode }) {
-  const { cart, addToCart, decrementFromCart, removeFromCart, isEmpty } = useCart();
+  const { cart, addToCart, decrementFromCart, removeFromCart, isEmpty } =
+    useCart();
+
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   if (!guestMode && isEmpty) {

@@ -4,7 +4,7 @@ import { useCart } from "./CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 
-const API_URL = "https://api.piyushkumartadvi.link"; // Backend URL
+const API_URL = "https://api.piyushkumartadvi.link";
 
 function Checkout({ guestMode }) {
   const { cart, clearCart } = useCart();
@@ -17,15 +17,15 @@ function Checkout({ guestMode }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (!guestMode && cart.length === 0)
+  if (!guestMode && cart.length === 0) {
     return <p className="text-center mt-10">Add items to cart to checkout.</p>;
+  }
 
   const handlePay = async () => {
     if (!stripe || !elements) return;
     setLoading(true);
 
     try {
-      // Create payment intent
       const res = await fetch(`${API_URL}/api/payment/create-payment-intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,7 +74,11 @@ function Checkout({ guestMode }) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {cart.map((item) => (
           <div key={item.id} className="flex items-center bg-white shadow rounded-lg p-4">
-            <img src={item.image || "/placeholder.png"} alt={item.name} className="w-20 h-20 object-cover rounded mr-4" />
+            <img
+              src={item.image || "/placeholder.png"}
+              alt={item.name}
+              className="w-20 h-20 object-cover rounded mr-4"
+            />
             <div className="flex flex-col flex-1">
               <p className="font-semibold">{item.name}</p>
               <p>${item.price} × {item.quantity}</p>
@@ -97,7 +101,17 @@ function Checkout({ guestMode }) {
         {loading ? "Processing..." : "Pay Now"}
       </button>
 
-      {message && <p className={`mt-4 ${message.toLowerCase().includes("success") ? "text-green-600" : "text-red-500"}`}>{message}</p>}
+      {message && (
+        <p
+          className={`mt-4 ${
+            message.toLowerCase().includes("success")
+              ? "text-green-600"
+              : "text-red-500"
+          }`}
+        >
+          {message}
+        </p>
+      )}
     </div>
   );
 }
