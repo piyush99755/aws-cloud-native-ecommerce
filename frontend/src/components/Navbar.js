@@ -11,6 +11,21 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
     { path: "/orders", label: "Orders" },
   ];
 
+  // Google login handler
+  const handleGoogleSignIn = () => {
+    const cognitoDomain =
+      "https://us-east-1zylluw6ax.auth.us-east-1.amazoncognito.com";
+    const clientId = "1hbjetddcmf4hp5cmpl5tae8l9";
+    const redirectUri = "https://app.piyushkumartadvi.link";
+    const scope = "openid email profile";
+
+    window.location.href = `${cognitoDomain}/login?client_id=${clientId}&response_type=code&scope=${encodeURIComponent(
+      scope
+    )}&redirect_uri=${encodeURIComponent(
+      redirectUri
+    )}&identity_provider=Google`;
+  };
+
   return (
     <header className="bg-white shadow-md mb-6">
       <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -20,7 +35,7 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
         </h1>
 
         {/* Navigation */}
-        <nav className="space-x-6">
+        <nav className="space-x-6 hidden sm:flex">
           {navLinks.map((link) => (
             <Link
               key={link.path}
@@ -37,9 +52,9 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
         </nav>
 
         {/* Auth Controls */}
-        <div>
+        <div className="flex items-center space-x-4">
           {isAuthenticated && user ? (
-            <div className="flex items-center space-x-4">
+            <>
               <span className="text-gray-700 text-sm">
                 {user?.profile?.email || "User"}
               </span>
@@ -49,14 +64,23 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
               >
                 Sign Out
               </button>
-            </div>
+            </>
           ) : (
-            <button
-              onClick={onSignIn}
-              className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-            >
-              Sign In
-            </button>
+            <>
+              <button
+                onClick={onSignIn}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              >
+                Sign In
+              </button>
+
+              <button
+                onClick={handleGoogleSignIn}
+                className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+              >
+                Sign In with Google
+              </button>
+            </>
           )}
         </div>
       </div>
