@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate } from "react-router-dom";
 import Products from "./components/Products";
 import Cart from "./components/Cart";
@@ -25,6 +25,15 @@ function App() {
     const saved = localStorage.getItem("guestMode");
     return saved ? JSON.parse(saved) : false;
   });
+
+  // Redirect authenticated users to /products
+  useEffect(() => {
+    if (auth.isAuthenticated) {
+      navigate("/products");
+      setGuestMode(false);
+      localStorage.setItem("guestMode", false);
+    }
+  }, [auth.isAuthenticated, navigate]);
 
   // Sign in / out handlers
   const handleSignOut = () => {
@@ -115,14 +124,16 @@ function App() {
               {/* Catch-all: redirect to Products if logged in or guestMode */}
               <Route
                 path="*"
-                element={isUser ? (
-                  <Products guestMode={guestMode} />
-                ) : (
-                  <LandingPage
-                    onSignIn={handleSignIn}
-                    onGuestMode={handleGuestMode}
-                  />
-                )}
+                element={
+                  isUser ? (
+                    <Products guestMode={guestMode} />
+                  ) : (
+                    <LandingPage
+                      onSignIn={handleSignIn}
+                      onGuestMode={handleGuestMode}
+                    />
+                  )
+                }
               />
             </Routes>
           </main>
