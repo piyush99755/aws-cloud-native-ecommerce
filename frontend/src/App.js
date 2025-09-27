@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useNavigate } from "react-router-dom";
+import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
 import Products from "./components/Products";
 import Cart from "./components/Cart";
 import Checkout from "./components/Checkout";
@@ -16,6 +16,14 @@ import "./styles/components.css";
 // Stripe
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
+// PrivateRoute helper for protected routes
+function PrivateRoute({ children, auth }) {
+  if (!auth.isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+}
+
 function App() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -29,9 +37,9 @@ function App() {
   // Redirect authenticated users to /products after tokens are ready
   useEffect(() => {
     if (!auth.isLoading && auth.isAuthenticated && auth.user) {
-      navigate("/products");
       setGuestMode(false);
       localStorage.setItem("guestMode", false);
+      navigate("/products", { replace: true });
     }
   }, [auth.isLoading, auth.isAuthenticated, auth.user, navigate]);
 
@@ -58,7 +66,7 @@ function App() {
   const handleGuestMode = () => {
     setGuestMode(true);
     localStorage.setItem("guestMode", true);
-    navigate("/products");
+    navigate("/products", { replace: true });
   };
 
   // Show loading while tokens are being parsed
@@ -66,7 +74,7 @@ function App() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-xl font-semibold text-gray-700 animate-pulse">
-          Redirecting...
+          Loading authentication...
         </p>
       </div>
     );
@@ -94,31 +102,36 @@ function App() {
                 path="/"
                 element={
                   isUser ? (
-                    <Products guestMode={guestMode} />
+                    <Navigate to="/products" replace />
                   ) : (
-                    <LandingPage
-                      onSignIn={handleSignIn}
-                      onGuestMode={handleGuestMode}
-                    />
+                    <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
                   )
                 }
               />
 
               {/* Main app routes */}
-              <Route path="/products" element={<Products guestMode={guestMode} />} />
-              <Route path="/cart" element={<Cart guestMode={guestMode} auth={auth} />} />
-              <Route path="/checkout" element={<Checkout guestMode={guestMode} auth={auth} />} />
-
+              <Route
+                path="/products"
+                element={<Products guestMode={guestMode} />}
+              />
+              <Route
+                path="/cart"
+                element={<Cart guestMode={guestMode} auth={auth} />}
+              />
+              <Route
+                path="/checkout"
+                element={
+                  <PrivateRoute auth={auth}>
+                    <Checkout guestMode={guestMode} auth={auth} />
+                  </PrivateRoute>
+                }
+              />
               <Route
                 path="/orders"
                 element={
-                  auth.isAuthenticated ? (
+                  <PrivateRoute auth={auth}>
                     <Orders />
-                  ) : (
-                    <p className="text-center mt-10 text-lg text-gray-700">
-                      Please log in to view your past orders.
-                    </p>
-                  )
+                  </PrivateRoute>
                 }
               />
 
@@ -126,14 +139,7 @@ function App() {
               <Route
                 path="*"
                 element={
-                  isUser ? (
-                    <Products guestMode={guestMode} />
-                  ) : (
-                    <LandingPage
-                      onSignIn={handleSignIn}
-                      onGuestMode={handleGuestMode}
-                    />
-                  )
+                  isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
                 }
               />
             </Routes>
