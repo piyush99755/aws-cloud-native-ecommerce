@@ -1,19 +1,18 @@
 import React from "react";
+import { useAuth } from "react-oidc-context";
 
-function LandingPage({ onSignIn, onGuestMode }) {
-  // Google login handler
+function LandingPage({ onGuestMode }) {
+  const auth = useAuth();
+
+  // Cognito / Google login using react-oidc-context
+  const handleCognitoSignIn = () => {
+    auth.signinRedirect();
+  };
+
   const handleGoogleSignIn = () => {
-    const cognitoDomain =
-      "https://us-east-1zylluw6ax.auth.us-east-1.amazoncognito.com";
-    const clientId = "1hbjetddcmf4hp5cmpl5tae8l9";
-    const redirectUri = "https://app.piyushkumartadvi.link";
-    const scope = "openid email profile";
-
-    window.location.href = `${cognitoDomain}/login?client_id=${clientId}&response_type=code&scope=${encodeURIComponent(
-      scope
-    )}&redirect_uri=${encodeURIComponent(
-      redirectUri
-    )}&identity_provider=Google`;
+    auth.signinRedirect({
+      data: { identity_provider: "Google" }, // tells Cognito to use Google
+    });
   };
 
   return (
@@ -28,7 +27,7 @@ function LandingPage({ onSignIn, onGuestMode }) {
       <div className="space-x-4 flex flex-col sm:flex-row gap-4">
         {/* Cognito Sign In */}
         <button
-          onClick={onSignIn}
+          onClick={handleCognitoSignIn}
           className="px-6 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
         >
           Sign In
