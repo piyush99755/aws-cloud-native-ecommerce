@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 
-// --- Global reference for Checkout.js ---
-let addOrder;
+// Exposed so Checkout.js can add orders
+export let addOrder;
 
 function Orders() {
   const [orders, setOrders] = useState([]);
@@ -14,6 +14,7 @@ function Orders() {
     onConfirm: null,
   });
 
+  // Fetch orders
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -22,7 +23,7 @@ function Orders() {
       const data = await res.json();
       setOrders(data);
     } catch (err) {
-      console.error(" Error fetching orders:", err);
+      console.error("Fetch orders failed:", err);
       setError("Error fetching orders");
     } finally {
       setLoading(false);
@@ -33,18 +34,18 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Allow Checkout.js to add order instantly
+  // Allow external components (Checkout) to add orders
   addOrder = (newOrder) => {
-    if (!newOrder.items) newOrder.items = [];
     setOrders((prev) => [newOrder, ...prev]);
   };
 
+  // Modal helpers
   const showConfirm = (message, onConfirm) =>
     setModal({ visible: true, message, onConfirm });
-
   const showAlert = (message) =>
     setModal({ visible: true, message, onConfirm: null });
 
+  // Delete order
   const handleDelete = (orderId) => {
     showConfirm("Are you sure you want to delete this order?", async () => {
       try {
@@ -52,7 +53,7 @@ function Orders() {
         const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
         if (!res.ok) throw new Error("Failed to delete order");
 
-        await fetchOrders();
+        setOrders((prev) => prev.filter((o) => o.id !== orderId)); // update UI instantly
         showAlert("Order deleted successfully");
       } catch (err) {
         console.error(" Delete failed:", err);
@@ -81,14 +82,11 @@ function Orders() {
             </div>
             <p className="text-gray-600">Total: ${order.total}</p>
             <div className="mt-2 border-t pt-2">
-              {order.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex justify-between items-center py-1"
-                >
+              {order.items.map((item, idx) => (
+                <div key={idx} className="flex justify-between items-center py-1">
                   <div className="flex items-center space-x-2">
                     <img
-                      src={item.image}
+                      src={item.image || "/placeholder.png"}
                       alt={item.name}
                       className="w-12 h-12 object-cover rounded"
                     />
@@ -114,7 +112,7 @@ function Orders() {
                 <>
                   <button
                     onClick={async () => {
-                      if (modal.onConfirm) await modal.onConfirm();
+                      await modal.onConfirm?.();
                       setModal({ visible: false, message: "", onConfirm: null });
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
@@ -149,4 +147,3 @@ function Orders() {
 }
 
 export default Orders;
-export { addOrder };

@@ -3,9 +3,8 @@ import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useCart } from "./CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
-import { addOrder } from "./Orders"; // Import addOrder hook
 
-function Checkout({ guestMode }) {
+function Checkout({ guestMode, onOrderPlaced }) {
   const { cart, clearCart } = useCart();
   const stripe = useStripe();
   const elements = useElements();
@@ -16,6 +15,14 @@ function Checkout({ guestMode }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
+  if (!guestMode && cart.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-lg text-gray-700">Add items to cart to checkout.</p>
+      </div>
+    );
+  }
+
   const handlePay = async () => {
     if (!stripe || !elements) return;
     setLoading(true);
@@ -23,7 +30,10 @@ function Checkout({ guestMode }) {
       const res = await fetch("/api/payment/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Math.round(total * 100), currency: "usd" }),
+        body: JSON.stringify({
+          amount: Math.round(total * 100),
+          currency: "usd",
+        }),
       });
       const { clientSecret } = await res.json();
 
@@ -31,9 +41,8 @@ function Checkout({ guestMode }) {
         payment_method: { card: elements.getElement(CardElement) },
       });
 
-      if (result.error) {
-        setMessage(result.error.message);
-      } else if (result.paymentIntent.status === "succeeded") {
+      if (result.error) setMessage(result.error.message);
+      else if (result.paymentIntent.status === "succeeded") {
         setMessage("Payment successful!");
 
         if (!guestMode) {
@@ -42,19 +51,23 @@ function Checkout({ guestMode }) {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              ...(token ? { Authorization: `Bearer ${token}` } : {}),
             },
             body: JSON.stringify({ items: cart, total: total.toFixed(2) }),
           });
 
-          const newOrder = await orderRes.json();
-          addOrder(newOrder); // Update Orders.js instantly
+          if (!orderRes.ok) throw new Error("Failed to save order");
+          const data = await orderRes.json();
+
+          // Push to Orders.js instantly
+          onOrderPlaced?.(data.order);
         }
 
         clearCart();
         navigate("/orders");
       }
-    } catch {
+    } catch (err) {
+      console.error(" Checkout error:", err);
       setMessage("Something went wrong, please try again!");
     }
     setLoading(false);
@@ -66,7 +79,10 @@ function Checkout({ guestMode }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {cart.map((item) => (
-          <div key={item.id} className="flex items-center bg-white shadow rounded-lg p-4">
+          <div
+            key={item.id}
+            className="flex items-center bg-white shadow rounded-lg p-4"
+          >
             <img
               src={item.image || "/placeholder.png"}
               alt={item.name}
