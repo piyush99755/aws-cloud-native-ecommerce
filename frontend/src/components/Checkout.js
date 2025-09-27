@@ -4,7 +4,9 @@ import { useCart } from "./CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
 
-function Checkout({ guestMode, onOrderPlaced }) {
+const API_URL = "https://api.piyushkumartadvi.link"; // Backend URL
+
+function Checkout({ guestMode }) {
   const { cart, clearCart } = useCart();
   const stripe = useStripe();
   const elements = useElements();
@@ -15,25 +17,19 @@ function Checkout({ guestMode, onOrderPlaced }) {
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
-  if (!guestMode && cart.length === 0) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-lg text-gray-700">Add items to cart to checkout.</p>
-      </div>
-    );
-  }
+  if (!guestMode && cart.length === 0)
+    return <p className="text-center mt-10">Add items to cart to checkout.</p>;
 
   const handlePay = async () => {
     if (!stripe || !elements) return;
     setLoading(true);
+
     try {
-      const res = await fetch("/api/payment/create-payment-intent", {
+      // Create payment intent
+      const res = await fetch(`${API_URL}/api/payment/create-payment-intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          amount: Math.round(total * 100),
-          currency: "usd",
-        }),
+        body: JSON.stringify({ amount: Math.round(total * 100), currency: "usd" }),
       });
       const { clientSecret } = await res.json();
 
@@ -47,29 +43,27 @@ function Checkout({ guestMode, onOrderPlaced }) {
 
         if (!guestMode) {
           const token = auth.user?.access_token;
-          const orderRes = await fetch("/api/orders", {
+          const orderRes = await fetch(`${API_URL}/api/orders`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...(token ? { Authorization: `Bearer ${token}` } : {}),
+              Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ items: cart, total: total.toFixed(2) }),
           });
 
-          if (!orderRes.ok) throw new Error("Failed to save order");
-          const data = await orderRes.json();
-
-          // Push to Orders.js instantly
-          onOrderPlaced?.(data.order);
+          if (!orderRes.ok) throw new Error("Failed to place order");
+          await orderRes.json();
         }
 
         clearCart();
         navigate("/orders");
       }
     } catch (err) {
-      console.error(" Checkout error:", err);
+      console.error(err);
       setMessage("Something went wrong, please try again!");
     }
+
     setLoading(false);
   };
 
@@ -79,20 +73,11 @@ function Checkout({ guestMode, onOrderPlaced }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
         {cart.map((item) => (
-          <div
-            key={item.id}
-            className="flex items-center bg-white shadow rounded-lg p-4"
-          >
-            <img
-              src={item.image || "/placeholder.png"}
-              alt={item.name}
-              className="w-20 h-20 object-cover rounded mr-4"
-            />
+          <div key={item.id} className="flex items-center bg-white shadow rounded-lg p-4">
+            <img src={item.image || "/placeholder.png"} alt={item.name} className="w-20 h-20 object-cover rounded mr-4" />
             <div className="flex flex-col flex-1">
               <p className="font-semibold">{item.name}</p>
-              <p className="text-gray-700">
-                ${item.price} × {item.quantity}
-              </p>
+              <p>${item.price} × {item.quantity}</p>
             </div>
           </div>
         ))}
@@ -112,17 +97,7 @@ function Checkout({ guestMode, onOrderPlaced }) {
         {loading ? "Processing..." : "Pay Now"}
       </button>
 
-      {message && (
-        <p
-          className={`mt-4 ${
-            message.toLowerCase().includes("success")
-              ? "text-green-600"
-              : "text-red-500"
-          }`}
-        >
-          {message}
-        </p>
-      )}
+      {message && <p className={`mt-4 ${message.toLowerCase().includes("success") ? "text-green-600" : "text-red-500"}`}>{message}</p>}
     </div>
   );
 }

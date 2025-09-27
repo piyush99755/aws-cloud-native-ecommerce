@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from "react";
 
-// Exposed so Checkout.js can add orders
-export let addOrder;
+const API_URL = "https://api.piyushkumartadvi.link"; 
 
 function Orders() {
   const [orders, setOrders] = useState([]);
@@ -14,16 +13,16 @@ function Orders() {
     onConfirm: null,
   });
 
-  // Fetch orders
+  // Fetch orders from backend
   const fetchOrders = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/orders", { cache: "no-store" });
+      const res = await fetch(`${API_URL}/api/orders`, { cache: "no-store" });
       if (!res.ok) throw new Error("Failed to fetch orders");
       const data = await res.json();
       setOrders(data);
     } catch (err) {
-      console.error("Fetch orders failed:", err);
+      console.error(err);
       setError("Error fetching orders");
     } finally {
       setLoading(false);
@@ -34,31 +33,24 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Allow external components (Checkout) to add orders
-  addOrder = (newOrder) => {
-    setOrders((prev) => [newOrder, ...prev]);
-  };
-
-  // Modal helpers
-  const showConfirm = (message, onConfirm) =>
-    setModal({ visible: true, message, onConfirm });
-  const showAlert = (message) =>
-    setModal({ visible: true, message, onConfirm: null });
-
   // Delete order
   const handleDelete = (orderId) => {
-    showConfirm("Are you sure you want to delete this order?", async () => {
-      try {
-        console.log(" Deleting order:", orderId);
-        const res = await fetch(`/api/orders/${orderId}`, { method: "DELETE" });
-        if (!res.ok) throw new Error("Failed to delete order");
-
-        setOrders((prev) => prev.filter((o) => o.id !== orderId)); // update UI instantly
-        showAlert("Order deleted successfully");
-      } catch (err) {
-        console.error(" Delete failed:", err);
-        showAlert("Failed to delete order");
-      }
+    setModal({
+      visible: true,
+      message: "Are you sure you want to delete this order?",
+      onConfirm: async () => {
+        try {
+          const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+            method: "DELETE",
+          });
+          if (!res.ok) throw new Error("Failed to delete order");
+          await fetchOrders();
+          setModal({ visible: true, message: "Order deleted successfully", onConfirm: null });
+        } catch (err) {
+          console.error(err);
+          setModal({ visible: true, message: "Failed to delete order", onConfirm: null });
+        }
+      },
     });
   };
 
@@ -80,21 +72,15 @@ function Orders() {
                 Delete
               </button>
             </div>
-            <p className="text-gray-600">Total: ${order.total}</p>
+            <p>Total: ${order.total}</p>
             <div className="mt-2 border-t pt-2">
-              {order.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center py-1">
+              {order.items.map((item) => (
+                <div key={item.id} className="flex justify-between items-center py-1">
                   <div className="flex items-center space-x-2">
-                    <img
-                      src={item.image || "/placeholder.png"}
-                      alt={item.name}
-                      className="w-12 h-12 object-cover rounded"
-                    />
+                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
                     <span>{item.name}</span>
                   </div>
-                  <span>
-                    {item.quantity} × ${item.price}
-                  </span>
+                  <span>{item.quantity} × ${item.price}</span>
                 </div>
               ))}
             </div>
@@ -112,7 +98,7 @@ function Orders() {
                 <>
                   <button
                     onClick={async () => {
-                      await modal.onConfirm?.();
+                      if (modal.onConfirm) await modal.onConfirm();
                       setModal({ visible: false, message: "", onConfirm: null });
                     }}
                     className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
@@ -120,9 +106,7 @@ function Orders() {
                     Yes
                   </button>
                   <button
-                    onClick={() =>
-                      setModal({ visible: false, message: "", onConfirm: null })
-                    }
+                    onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
                     className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                   >
                     No
@@ -130,9 +114,7 @@ function Orders() {
                 </>
               ) : (
                 <button
-                  onClick={() =>
-                    setModal({ visible: false, message: "", onConfirm: null })
-                  }
+                  onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
                   className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
                 >
                   OK
