@@ -16,7 +16,7 @@ import "./styles/components.css";
 // Stripe
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
-// PrivateRoute helper for protected routes
+// PrivateRoute wrapper for protected pages
 function PrivateRoute({ children, auth }) {
   if (!auth.isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -34,7 +34,7 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
-  // Redirect authenticated users to /products after tokens are ready
+  // Redirect logged-in users to /products automatically
   useEffect(() => {
     if (!auth.isLoading && auth.isAuthenticated && auth.user) {
       setGuestMode(false);
@@ -48,6 +48,7 @@ function App() {
     auth.removeUser();
     setGuestMode(false);
     localStorage.setItem("guestMode", false);
+
     const clientId = "1hbjetddcmf4hp5cmpl5tae8l9";
     const logoutUri = "https://app.piyushkumartadvi.link";
     const cognitoDomain =
@@ -69,7 +70,7 @@ function App() {
     navigate("/products", { replace: true });
   };
 
-  // Show loading while tokens are being parsed
+  // Loading / error states
   if (auth.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -82,14 +83,12 @@ function App() {
 
   if (auth.error) return <div>Error: {auth.error.message}</div>;
 
-  const isUser = auth.isAuthenticated || guestMode;
-
   return (
     <Elements stripe={stripePromise}>
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
           <Navbar
-            isAuthenticated={isUser}
+            isAuthenticated={auth.isAuthenticated || guestMode}
             user={auth.user}
             onSignIn={handleSignIn}
             onSignOut={handleSignOut}
@@ -101,15 +100,18 @@ function App() {
               <Route
                 path="/"
                 element={
-                  isUser ? (
+                  auth.isAuthenticated ? (
                     <Navigate to="/products" replace />
                   ) : (
-                    <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
+                    <LandingPage
+                      onSignIn={handleSignIn}
+                      onGuestMode={handleGuestMode}
+                    />
                   )
                 }
               />
 
-              {/* Main app routes */}
+              {/* Public pages */}
               <Route
                 path="/products"
                 element={<Products guestMode={guestMode} />}
@@ -118,6 +120,8 @@ function App() {
                 path="/cart"
                 element={<Cart guestMode={guestMode} auth={auth} />}
               />
+
+              {/* Protected pages */}
               <Route
                 path="/checkout"
                 element={
@@ -135,11 +139,18 @@ function App() {
                 }
               />
 
-              {/* Catch-all: redirect to Products if logged in or guestMode */}
+              {/* Catch-all */}
               <Route
                 path="*"
                 element={
-                  isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
+                  auth.isAuthenticated || guestMode ? (
+                    <Navigate to="/products" replace />
+                  ) : (
+                    <LandingPage
+                      onSignIn={handleSignIn}
+                      onGuestMode={handleGuestMode}
+                    />
+                  )
                 }
               />
             </Routes>
