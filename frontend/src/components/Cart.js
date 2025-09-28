@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "./CartContext";
 import CartItem from "./CartItem";
-import SkeletonCartItem from "./SkeletonCartItem";
+
 
 function Cart({ guestMode }) {
   const { cart, addToCart, decrementFromCart, removeFromCart, isEmpty } = useCart();
