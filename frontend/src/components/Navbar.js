@@ -13,9 +13,13 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
     { path: "/orders", label: "Orders" },
   ];
 
+  const username = user?.profile?.email
+    ? user.profile.email.split("@")[0]
+    : "User";
+
   return (
-    <header className="bg-white shadow-md mb-6">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+    <header className="bg-white shadow-md mb-6 relative">
+      <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center relative z-10">
         {/* Logo */}
         <h1 className="text-2xl font-bold text-blue-600 tracking-wide">
           Cloud <span className="text-gray-800">E-Commerce</span>
@@ -42,9 +46,7 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
         <div className="hidden sm:flex items-center space-x-4">
           {isAuthenticated && user ? (
             <>
-              <span className="text-gray-700 text-sm">
-                {user?.profile?.email || "User"}
-              </span>
+              <span className="text-gray-700 text-sm">{username}</span>
               <button
                 onClick={onSignOut}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
@@ -77,8 +79,8 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
 
       {/* Mobile Navigation */}
       {isMenuOpen && (
-        <nav className="sm:hidden bg-white border-t border-gray-200">
-          <div className="px-6 py-4 flex flex-col space-y-3">
+        <div className="sm:hidden absolute right-6 top-full mt-2 bg-white border border-gray-200 shadow-lg rounded-lg min-w-max">
+          <nav className="flex flex-col p-4 space-y-2">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
@@ -94,12 +96,10 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
               </Link>
             ))}
 
-            <div className="pt-4 border-t border-gray-200 flex flex-col space-y-2">
+            <div className="pt-2 border-t border-gray-200 flex flex-col space-y-2">
               {isAuthenticated && user ? (
                 <>
-                  <span className="text-gray-700 text-sm">
-                    {user?.profile?.email || "User"}
-                  </span>
+                  <span className="text-gray-700 text-sm">{username}</span>
                   <button
                     onClick={onSignOut}
                     className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
@@ -116,8 +116,8 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
                 </button>
               )}
             </div>
-          </div>
-        </nav>
+          </nav>
+        </div>
       )}
     </header>
   );
