@@ -3,6 +3,7 @@ import { CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 import { useCart } from "./CartContext";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "react-oidc-context";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_URL = "https://api.piyushkumartadvi.link";
 
@@ -16,6 +17,7 @@ function Checkout({ guestMode }) {
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showToast, setShowToast] = useState(false);
 
   if (!guestMode && cart.length === 0) {
     return <p className="text-center mt-10">Add items to cart to checkout.</p>;
@@ -24,26 +26,29 @@ function Checkout({ guestMode }) {
   const handlePay = async () => {
     if (!stripe || !elements) return;
     setLoading(true);
-
+    setMessage("");
     try {
       const res = await fetch(`${API_URL}/api/payment/create-payment-intent`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ amount: Math.round(total * 100), currency: "usd" }),
       });
-      const { clientSecret } = await res.json();
 
+      const { clientSecret } = await res.json();
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: { card: elements.getElement(CardElement) },
       });
 
-      if (result.error) setMessage(result.error.message);
-      else if (result.paymentIntent.status === "succeeded") {
+      if (result.error) {
+        setMessage(result.error.message);
+        setShowToast(true);
+      } else if (result.paymentIntent.status === "succeeded") {
         setMessage("Payment successful!");
+        setShowToast(true);
 
         if (!guestMode) {
           const token = auth.user?.access_token;
-          const orderRes = await fetch(`${API_URL}/api/orders`, {
+          await fetch(`${API_URL}/api/orders`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -51,19 +56,16 @@ function Checkout({ guestMode }) {
             },
             body: JSON.stringify({ items: cart, total: total.toFixed(2) }),
           });
-
-          if (!orderRes.ok) throw new Error("Failed to place order");
-          await orderRes.json();
         }
 
         clearCart();
-        navigate("/orders");
+        setTimeout(() => navigate("/orders"), 1200); // Navigate after toast
       }
     } catch (err) {
       console.error(err);
       setMessage("Something went wrong, please try again!");
+      setShowToast(true);
     }
-
     setLoading(false);
   };
 
@@ -96,24 +98,30 @@ function Checkout({ guestMode }) {
       <button
         onClick={handlePay}
         disabled={!stripe || loading}
-        className="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition"
+        className={`w-full md:w-auto bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition disabled:opacity-50 disabled:cursor-not-allowed`}
       >
         {loading ? "Processing..." : "Pay Now"}
       </button>
 
-      {message && (
-        <p
-          className={`mt-4 ${
-            message.toLowerCase().includes("success")
-              ? "text-green-600"
-              : "text-red-500"
-          }`}
-        >
-          {message}
-        </p>
-      )}
+      {/* Animated toast feedback */}
+      <AnimatePresence>
+        {showToast && message && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            className={`fixed top-6 right-6 z-50 px-6 py-4 rounded shadow-lg text-white ${
+              message.toLowerCase().includes("success") ? "bg-green-600" : "bg-red-500"
+            }`}
+            onAnimationComplete={() => setTimeout(() => setShowToast(false), 2000)}
+          >
+            {message}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 export default Checkout;
+

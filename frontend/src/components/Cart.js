@@ -1,6 +1,7 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "./CartContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 function Cart({ guestMode }) {
   const { cart, addToCart, decrementFromCart, removeFromCart, isEmpty } =
@@ -20,50 +21,56 @@ function Cart({ guestMode }) {
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6">Shopping Cart</h2>
 
-      {isEmpty ? (
-        <p className="text-gray-700">Your cart is empty.</p>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cart.map((item) => (
-            <div
-              key={item.id}
-              className="flex flex-col bg-white rounded-lg shadow p-4"
-            >
-              <img
-                src={item.image || "/placeholder.png"}
-                alt={item.name}
-                className="w-20 h-20 object-cover mb-4 rounded"
-              />
-              <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
-              <p className="text-gray-700 mb-4">
-                ${item.price} × {item.quantity}
-              </p>
+      <AnimatePresence>
+        {isEmpty ? (
+          <p className="text-gray-700">Your cart is empty.</p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {cart.map((item) => (
+              <motion.div
+                key={item.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col bg-white rounded-lg shadow p-4"
+              >
+                <img
+                  src={item.image || "/placeholder.png"}
+                  alt={item.name}
+                  className="w-20 h-20 object-cover mb-4 rounded"
+                />
+                <h3 className="font-semibold text-lg mb-2">{item.name}</h3>
+                <p className="text-gray-700 mb-4">
+                  ${item.price} × {item.quantity}
+                </p>
 
-              <div className="flex items-center justify-between mt-auto space-x-2">
-                <button
-                  onClick={() => decrementFromCart(item.id)}
-                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                >
-                  -
-                </button>
-                <span>{item.quantity}</span>
-                <button
-                  onClick={() => addToCart(item)}
-                  className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
-                >
-                  +
-                </button>
-                <button
-                  onClick={() => removeFromCart(item.id)}
-                  className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
-                >
-                  Remove
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
+                <div className="flex items-center justify-between mt-auto space-x-2">
+                  <button
+                    onClick={() => decrementFromCart(item.id)}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                  >
+                    -
+                  </button>
+                  <span>{item.quantity}</span>
+                  <button
+                    onClick={() => addToCart(item)}
+                    className="px-3 py-1 bg-gray-200 rounded hover:bg-gray-300"
+                  >
+                    +
+                  </button>
+                  <button
+                    onClick={() => removeFromCart(item.id)}
+                    className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        )}
+      </AnimatePresence>
 
       {!isEmpty && (
         <div className="mt-6 text-right">
@@ -81,3 +88,4 @@ function Cart({ guestMode }) {
 }
 
 export default Cart;
+

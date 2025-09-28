@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
-const API_URL = "https://api.piyushkumartadvi.link"; 
+const API_URL = "https://api.piyushkumartadvi.link";
 
 function Orders() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const [modal, setModal] = useState({
     visible: false,
     message: "",
     onConfirm: null,
   });
 
-  // Fetch orders from backend
+  // Fetch orders
   const fetchOrders = async () => {
     try {
       setLoading(true);
@@ -33,16 +33,13 @@ function Orders() {
     fetchOrders();
   }, []);
 
-  // Delete order
   const handleDelete = (orderId) => {
     setModal({
       visible: true,
       message: "Are you sure you want to delete this order?",
       onConfirm: async () => {
         try {
-          const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
-            method: "DELETE",
-          });
+          const res = await fetch(`${API_URL}/api/orders/${orderId}`, { method: "DELETE" });
           if (!res.ok) throw new Error("Failed to delete order");
           await fetchOrders();
           setModal({ visible: true, message: "Order deleted successfully", onConfirm: null });
@@ -54,26 +51,37 @@ function Orders() {
     });
   };
 
-  if (loading) return <p className="text-center mt-10">Loading orders...</p>;
+  // Skeleton loader component
+  const SkeletonOrder = () => (
+    <div className="bg-white shadow p-4 rounded-lg animate-pulse h-40 mb-4"></div>
+  );
+
+  if (loading) return <div className="px-4 py-8 max-w-4xl mx-auto">{[...Array(3)].map((_, i) => <SkeletonOrder key={i} />)}</div>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
   if (!orders.length) return <p className="text-center mt-10">No orders yet.</p>;
 
   return (
-    <>
-      <div className="space-y-6">
+    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
+      <AnimatePresence>
         {orders.map((order) => (
-          <div key={order.id} className="bg-white shadow p-4 rounded-lg">
+          <motion.div
+            key={order.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            className="bg-white shadow p-4 rounded-lg"
+          >
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-semibold text-lg">Order #{order.id}</h3>
               <button
                 onClick={() => handleDelete(order.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600"
+                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
               >
                 Delete
               </button>
             </div>
             <p>Total: ${order.total}</p>
-            <div className="mt-2 border-t pt-2">
+            <div className="mt-2 border-t pt-2 space-y-2">
               {order.items.map((item) => (
                 <div key={item.id} className="flex justify-between items-center py-1">
                   <div className="flex items-center space-x-2">
@@ -84,9 +92,9 @@ function Orders() {
                 </div>
               ))}
             </div>
-          </div>
+          </motion.div>
         ))}
-      </div>
+      </AnimatePresence>
 
       {/* Modal */}
       {modal.visible && (
@@ -124,7 +132,7 @@ function Orders() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
 

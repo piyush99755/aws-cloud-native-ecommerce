@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useAuth } from "react-oidc-context";
 import { getProducts } from "../api/productService";
 import { useCart } from "./CartContext";
+import { motion, AnimatePresence } from "framer-motion";
 
 function Products({ guestMode }) {
   const auth = useAuth();
@@ -22,7 +23,7 @@ function Products({ guestMode }) {
 
         setProducts(Array.isArray(data) ? data : []);
       } catch (err) {
-        console.error("Error fetching products:", err);
+        console.error(err);
         if (err.response?.status === 403) {
           setError("Access denied. Please sign in to view products.");
         } else {
@@ -37,78 +38,100 @@ function Products({ guestMode }) {
   }, [auth.isAuthenticated, auth.user?.access_token, guestMode]);
 
   if (!auth.isAuthenticated && !guestMode) {
-    return <p className="text-center mt-10 text-lg">Please sign in to view products.</p>;
+    return (
+      <p className="text-center mt-10 text-lg">
+        Please sign in to view products.
+      </p>
+    );
   }
-  if (loading) return <p className="text-center mt-10 text-lg">Loading Products...</p>;
+  if (loading)
+    return (
+      <div className="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+        {[...Array(8)].map((_, i) => (
+          <div
+            key={i}
+            className="bg-white shadow rounded-lg p-4 animate-pulse h-64"
+          />
+        ))}
+      </div>
+    );
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
-  if (!products.length) return <p className="text-center mt-10 text-lg">No products found.</p>;
+  if (!products.length)
+    return <p className="text-center mt-10 text-lg">No products found.</p>;
 
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6">Products</h2>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {products.map((product) => {
-          const cartItem = cart.find((item) => item.id === product.id);
+        <AnimatePresence>
+          {products.map((product) => {
+            const cartItem = cart.find((item) => item.id === product.id);
+            return (
+              <motion.div
+                key={product.id}
+                layout
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className="bg-white shadow-md rounded-lg p-4 flex flex-col hover:shadow-xl transition"
+              >
+                <img
+                  src={product.image || "/placeholder.png"}
+                  alt={product.name}
+                  className="h-40 w-full object-contain mb-4"
+                />
+                <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
+                <p className="text-gray-700 mb-4">${product.price}</p>
 
-          return (
-            <div
-              key={product.id}
-              className="bg-white shadow-md rounded-lg p-4 flex flex-col hover:shadow-xl transition"
-            >
-              <img
-                src={product.image || "/placeholder.png"}
-                alt={product.name}
-                className="h-40 w-full object-contain mb-4"
-              />
-              <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
-              <p className="text-gray-700 mb-4">${product.price}</p>
-
-              {cartItem ? (
-                <div className="flex items-center justify-between mt-auto">
-                  <button
-                    className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
-                    onClick={() => decrementFromCart(product.id)}
+                {cartItem ? (
+                  <motion.div
+                    className="flex items-center justify-between mt-auto"
+                    layout
                   >
-                    -
-                  </button>
-                  <span>{cartItem.quantity}</span>
+                    <button
+                      className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                      onClick={() => decrementFromCart(product.id)}
+                    >
+                      -
+                    </button>
+                    <span>{cartItem.quantity}</span>
+                    <button
+                      className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                      onClick={() => addToCart(product)}
+                    >
+                      +
+                    </button>
+                  </motion.div>
+                ) : (
                   <button
-                    className="bg-gray-300 px-3 py-1 rounded hover:bg-gray-400"
+                    className="mt-auto bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
                     onClick={() => addToCart(product)}
                   >
-                    +
+                    Add to Cart
                   </button>
-                </div>
-              ) : (
-                <button
-                  className="mt-auto bg-blue-500 text-white py-2 px-4 rounded hover:bg-blue-600 transition"
-                  onClick={() => addToCart(product)}
-                >
-                  Add to Cart
-                </button>
-              )}
+                )}
 
-              {/* Direct Cart/Checkout Buttons (responsive) */}
-              {cartItem && (
-                <div className="mt-2 flex justify-between space-x-2">
-                  <button
-                    className="flex-1 bg-green-500 text-white py-1 rounded hover:bg-green-600 transition text-sm"
-                    onClick={() => window.location.href = "/cart"}
-                  >
-                    Go to Cart
-                  </button>
-                  <button
-                    className="flex-1 bg-yellow-500 text-white py-1 rounded hover:bg-yellow-600 transition text-sm"
-                    onClick={() => window.location.href = "/checkout"}
-                  >
-                    Checkout
-                  </button>
-                </div>
-              )}
-            </div>
-          );
-        })}
+                {cartItem && (
+                  <div className="mt-2 flex justify-between space-x-2">
+                    <button
+                      className="flex-1 bg-green-500 text-white py-1 rounded hover:bg-green-600 transition text-sm"
+                      onClick={() => (window.location.href = "/cart")}
+                    >
+                      Go to Cart
+                    </button>
+                    <button
+                      className="flex-1 bg-yellow-500 text-white py-1 rounded hover:bg-yellow-600 transition text-sm"
+                      onClick={() => (window.location.href = "/checkout")}
+                    >
+                      Checkout
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </div>
     </div>
   );
