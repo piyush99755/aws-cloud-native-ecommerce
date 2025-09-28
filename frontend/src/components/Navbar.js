@@ -77,10 +77,10 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
         </button>
       </div>
 
-      {/* Mobile Navigation */}
+      {/* Mobile Navigation (slide-in, half screen) */}
       {isMenuOpen && (
-        <div className="sm:hidden absolute right-6 top-full mt-2 bg-white border border-gray-200 shadow-lg rounded-lg min-w-max">
-          <nav className="flex flex-col p-4 space-y-2">
+        <div className="sm:hidden fixed top-0 right-0 h-full w-1/2 bg-white shadow-lg z-50 p-6 flex flex-col justify-start">
+          <nav className="flex flex-col space-y-4">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
@@ -95,28 +95,28 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
                 {link.label}
               </Link>
             ))}
-
-            <div className="pt-2 border-t border-gray-200 flex flex-col space-y-2">
-              {isAuthenticated && user ? (
-                <>
-                  <span className="text-gray-700 text-sm">{username}</span>
-                  <button
-                    onClick={onSignOut}
-                    className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
-                  >
-                    Sign Out
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={onSignIn}
-                  className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
-                >
-                  Sign In
-                </button>
-              )}
-            </div>
           </nav>
+
+          <div className="mt-6 border-t border-gray-200 pt-4 flex flex-col space-y-2">
+            {isAuthenticated && user ? (
+              <>
+                <span className="text-gray-700 text-sm">{username}</span>
+                <button
+                  onClick={onSignOut}
+                  className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
+                >
+                  Sign Out
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={onSignIn}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition"
+              >
+                Sign In
+              </button>
+            )}
+          </div>
         </div>
       )}
     </header>
