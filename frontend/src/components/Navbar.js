@@ -46,7 +46,9 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
         <div className="hidden sm:flex items-center space-x-4">
           {isAuthenticated && user ? (
             <>
-              <span className="text-gray-700 text-sm">{username}</span>
+              <span className="text-blue-600 font-semibold text-lg truncate max-w-xs">
+                {username}
+              </span>
               <button
                 onClick={onSignOut}
                 className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
@@ -100,7 +102,9 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
           <div className="mt-6 border-t border-gray-200 pt-4 flex flex-col space-y-2">
             {isAuthenticated && user ? (
               <>
-                <span className="text-gray-700 text-sm">{username}</span>
+                <span className="text-blue-600 font-semibold text-lg truncate max-w-full">
+                  {username}
+                </span>
                 <button
                   onClick={onSignOut}
                   className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition"
