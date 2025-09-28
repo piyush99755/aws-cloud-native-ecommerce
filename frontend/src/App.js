@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Routes, Route, useNavigate, Navigate } from "react-router-dom";
+import { Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
 import Products from "./components/Products";
 import Cart from "./components/Cart";
 import Checkout from "./components/Checkout";
@@ -18,19 +18,23 @@ const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 function App() {
   const auth = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
   const [guestMode, setGuestMode] = useState(() => {
     const saved = localStorage.getItem("guestMode");
     return saved ? JSON.parse(saved) : false;
   });
 
-  // Redirect authenticated users to /products after login
+  // Redirect only if on "/" after login
   useEffect(() => {
     if (!auth.isLoading && auth.isAuthenticated && auth.user) {
-      navigate("/products", { replace: true });
+      if (location.pathname === "/") {
+        navigate("/products", { replace: true });
+      }
       setGuestMode(false);
       localStorage.setItem("guestMode", false);
     }
-  }, [auth.isLoading, auth.isAuthenticated, auth.user, navigate]);
+  }, [auth.isLoading, auth.isAuthenticated, auth.user, navigate, location.pathname]);
 
   const handleSignOut = () => {
     auth.removeUser();
@@ -86,61 +90,66 @@ function App() {
 
           <main className="max-w-6xl mx-auto px-4">
             <Routes>
-                {/* Landing or redirect to products */}
-                <Route
-                  path="/"
-                  element={
-                    isUser ? (
-                      <Navigate to="/products" replace />
-                    ) : (
-                      <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
-                    )
-                  }
-                />
+              {/* Landing or redirect to products */}
+              <Route
+                path="/"
+                element={
+                  isUser ? (
+                    <Navigate to="/products" replace />
+                  ) : (
+                    <LandingPage
+                      onSignIn={handleSignIn}
+                      onGuestMode={handleGuestMode}
+                    />
+                  )
+                }
+              />
 
-                {/* Products (always accessible in guest or auth mode) */}
-                <Route path="/products" element={<Products guestMode={guestMode} />} />
+              {/* Products (always accessible) */}
+              <Route
+                path="/products"
+                element={<Products guestMode={guestMode} />}
+              />
 
-                {/* Cart */}
-                <Route
-                  path="/cart"
-                  element={
-                    isUser ? (
-                      <Cart guestMode={guestMode} />
-                    ) : (
-                      <Navigate to="/" replace />
-                    )
-                  }
-                />
+              {/* Cart */}
+              <Route
+                path="/cart"
+                element={
+                  isUser ? (
+                    <Cart guestMode={guestMode} />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
 
-                {/* Checkout */}
-                <Route
-                  path="/checkout"
-                  element={
-                    isUser ? (
-                      <Checkout guestMode={guestMode} />
-                    ) : (
-                      <Navigate to="/" replace />
-                    )
-                  }
-                />
+              {/* Checkout */}
+              <Route
+                path="/checkout"
+                element={
+                  isUser ? (
+                    <Checkout guestMode={guestMode} />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
 
-                {/* Orders */}
-                <Route
-                  path="/orders"
-                  element={
-                    auth.isAuthenticated ? (
-                      <Orders />
-                    ) : (
-                      <Navigate to="/" replace />
-                    )
-                  }
-                />
+              {/* Orders (auth only) */}
+              <Route
+                path="/orders"
+                element={
+                  auth.isAuthenticated ? (
+                    <Orders />
+                  ) : (
+                    <Navigate to="/" replace />
+                  )
+                }
+              />
 
-                {/* Catch-all */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+              {/* Catch-all */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
-
           </main>
         </div>
       </CartProvider>
