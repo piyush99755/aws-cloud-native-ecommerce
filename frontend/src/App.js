@@ -15,6 +15,17 @@ import "./styles/components.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
+// Wrapper for guest-restricted routes (checkout/orders)
+const GuestRestrictedRoute = ({ isAuthenticated, message, children }) => {
+  return isAuthenticated ? (
+    children
+  ) : (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+      <p className="text-lg text-gray-700 text-center">{message}</p>
+    </div>
+  );
+};
+
 function App() {
   const auth = useAuth();
   const navigate = useNavigate();
@@ -25,7 +36,9 @@ function App() {
     return saved ? JSON.parse(saved) : false;
   });
 
-  // Redirect only if on "/" after login
+  const isUser = auth.isAuthenticated || guestMode;
+
+  // Redirect authenticated users from "/" to "/products"
   useEffect(() => {
     if (!auth.isLoading && auth.isAuthenticated && auth.user) {
       if (location.pathname === "/") {
@@ -66,16 +79,12 @@ function App() {
   if (auth.isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-xl font-semibold text-gray-700 animate-pulse">
-          Redirecting...
-        </p>
+        <p className="text-xl font-semibold text-gray-700 animate-pulse">Redirecting...</p>
       </div>
     );
   }
 
   if (auth.error) return <div>Error: {auth.error.message}</div>;
-
-  const isUser = auth.isAuthenticated || guestMode;
 
   return (
     <Elements stripe={stripePromise}>
@@ -90,60 +99,50 @@ function App() {
 
           <main className="max-w-6xl mx-auto px-4">
             <Routes>
-              {/* Landing or redirect to products */}
+              {/* Landing or redirect */}
               <Route
                 path="/"
                 element={
                   isUser ? (
                     <Navigate to="/products" replace />
                   ) : (
-                    <LandingPage
-                      onSignIn={handleSignIn}
-                      onGuestMode={handleGuestMode}
-                    />
+                    <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
                   )
                 }
               />
 
-              {/* Products (always accessible) */}
-              <Route
-                path="/products"
-                element={<Products guestMode={guestMode} />}
-              />
+              {/* Products accessible to everyone */}
+              <Route path="/products" element={<Products guestMode={guestMode} />} />
 
-              {/* Cart */}
+              {/* Cart accessible to both guests and authenticated */}
               <Route
                 path="/cart"
-                element={
-                  isUser ? (
-                    <Cart guestMode={guestMode} />
-                  ) : (
-                    <Navigate to="/" replace />
-                  )
-                }
+                element={isUser ? <Cart guestMode={guestMode} /> : <Navigate to="/" replace />}
               />
 
-              {/* Checkout */}
+              {/* Checkout restricted to authenticated only */}
               <Route
                 path="/checkout"
                 element={
-                  isUser ? (
+                  <GuestRestrictedRoute
+                    isAuthenticated={auth.isAuthenticated}
+                    message="Please sign in to proceed to checkout."
+                  >
                     <Checkout guestMode={guestMode} />
-                  ) : (
-                    <Navigate to="/" replace />
-                  )
+                  </GuestRestrictedRoute>
                 }
               />
 
-              {/* Orders (auth only) */}
+              {/* Orders restricted to authenticated only */}
               <Route
                 path="/orders"
                 element={
-                  auth.isAuthenticated ? (
+                  <GuestRestrictedRoute
+                    isAuthenticated={auth.isAuthenticated}
+                    message="Please sign in to view your orders."
+                  >
                     <Orders />
-                  ) : (
-                    <Navigate to="/" replace />
-                  )
+                  </GuestRestrictedRoute>
                 }
               />
 
