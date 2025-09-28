@@ -86,29 +86,61 @@ function App() {
 
           <main className="max-w-6xl mx-auto px-4">
             <Routes>
-              <Route
-                path="/"
-                element={
-                  isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
-                }
-              />
-              <Route path="/products" element={<Products guestMode={guestMode} />} />
-              <Route path="/cart" element={<Cart guestMode={guestMode} />} />
-              <Route
-                path="/checkout"
-                element={
-                  auth.isAuthenticated || guestMode ? <Checkout guestMode={guestMode} /> : <Navigate to="/" replace />
-                }
-              />
-              <Route
-                path="/orders"
-                element={auth.isAuthenticated ? <Orders /> : <Navigate to="/" replace />}
-              />
-              <Route
-                path="*"
-                element={isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />}
-              />
+                {/* Landing or redirect to products */}
+                <Route
+                  path="/"
+                  element={
+                    isUser ? (
+                      <Navigate to="/products" replace />
+                    ) : (
+                      <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
+                    )
+                  }
+                />
+
+                {/* Products (always accessible in guest or auth mode) */}
+                <Route path="/products" element={<Products guestMode={guestMode} />} />
+
+                {/* Cart */}
+                <Route
+                  path="/cart"
+                  element={
+                    isUser ? (
+                      <Cart guestMode={guestMode} />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  }
+                />
+
+                {/* Checkout */}
+                <Route
+                  path="/checkout"
+                  element={
+                    isUser ? (
+                      <Checkout guestMode={guestMode} />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  }
+                />
+
+                {/* Orders */}
+                <Route
+                  path="/orders"
+                  element={
+                    auth.isAuthenticated ? (
+                      <Orders />
+                    ) : (
+                      <Navigate to="/" replace />
+                    )
+                  }
+                />
+
+                {/* Catch-all */}
+                <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
+
           </main>
         </div>
       </CartProvider>
