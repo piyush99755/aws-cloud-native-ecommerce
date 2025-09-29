@@ -10,64 +10,93 @@ import PaymentForm from "./PaymentForm";
 const API_URL = "https://api.piyushkumartadvi.link";
 
 function Checkout({ guestMode }) {
-  // ===== Hooks =====
   const { cart, clearCart } = useCart();
   const stripe = useStripe();
   const elements = useElements();
   const navigate = useNavigate();
   const auth = useAuth();
 
-  // ===== State =====
   const [loading, setLoading] = useState(false);
   const [loadingItems, setLoadingItems] = useState(true);
   const [message, setMessage] = useState("");
 
-  const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  // Calculate total as a number
+  const total = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
 
-  // ===== Skeleton Loader Simulation =====
   useEffect(() => {
     const timer = setTimeout(() => setLoadingItems(false), 500);
     return () => clearTimeout(timer);
   }, []);
 
-  // ===== Early return for empty cart =====
   if (!guestMode && cart.length === 0) {
     return <p className="text-center mt-10 text-lg">Add items to cart to checkout.</p>;
   }
 
-  // ===== Handle Payment =====
   const handlePay = async () => {
     if (!stripe || !elements) return;
 
+    const amountInCents = Math.round(total * 100);
+    if (isNaN(amountInCents) || amountInCents <= 0) {
+      setMessage("Invalid payment amount.");
+      return;
+    }
+
     setLoading(true);
+    setMessage("");
+
     try {
-      // Create payment intent
+      // Create PaymentIntent
       const res = await fetch(`${API_URL}/api/payment/create-payment-intent`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount: Math.round(total * 100), currency: "usd" }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.user?.access_token || ""}`,
+        },
+        body: JSON.stringify({ amount: amountInCents, currency: "usd" }),
       });
-      const { clientSecret } = await res.json();
 
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData?.error || "Failed to create payment intent");
+      }
+
+      const { clientSecret } = await res.json();
+      if (!clientSecret) throw new Error("Missing client secret from server");
+
+      // Confirm card payment
       const result = await stripe.confirmCardPayment(clientSecret, {
-        payment_method: { card: elements.getElement(CardElement) },
+        payment_method: {
+          card: elements.getElement(CardElement),
+          billing_details: { email: auth.user?.profile?.email || "" },
+        },
       });
 
       if (result.error) {
-        setMessage(result.error.message);
-      } else if (result.paymentIntent.status === "succeeded") {
+        throw new Error(result.error.message);
+      }
+
+      if (result.paymentIntent.status === "succeeded") {
         setMessage("Payment successful!");
 
         if (!guestMode) {
-          const token = auth.user?.access_token;
-          await fetch(`${API_URL}/api/orders`, {
+          // Create order on backend
+          const orderRes = await fetch(`${API_URL}/api/orders`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
+              Authorization: `Bearer ${auth.user?.access_token}`,
             },
-            body: JSON.stringify({ items: cart, total: total.toFixed(2) }),
+            body: JSON.stringify({
+              items: cart,
+              total: total.toFixed(2),
+              paymentIntentId: result.paymentIntent.id,
+            }),
           });
+
+          if (!orderRes.ok) {
+            const errorData = await orderRes.json();
+            console.error("Order creation failed:", errorData);
+          }
         }
 
         clearCart();
@@ -75,13 +104,12 @@ function Checkout({ guestMode }) {
       }
     } catch (err) {
       console.error(err);
-      setMessage("Something went wrong, please try again!");
+      setMessage(err.message || "Something went wrong, please try again!");
     } finally {
       setLoading(false);
     }
   };
 
-  // ===== Render =====
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6">Checkout</h2>
