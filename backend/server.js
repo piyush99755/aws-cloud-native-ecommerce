@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { sendOrderConfirmation } from "./emailService.js";
+import { sendOrderConfirmation } from "./scripts/emailService.js";
 import { verifyToken, requireAdmin } from "./authMiddleware.js";
 import pool from "./db.js"; // make sure you have your PostgreSQL pool setup
 
