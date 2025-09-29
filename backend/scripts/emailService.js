@@ -23,7 +23,7 @@ export const sendOrderConfirmation = async (toEmail, orderDetails) => {
       },
       Subject: { Data: "Your Order Confirmation" },
     },
-    Source: "piyushtadvi4@gmail.com", // Must be verified in SES sandbox
+    Source: "orders@piyushkumartadvi.link", // Must be verified in SES sandbox
   };
 
   try {
