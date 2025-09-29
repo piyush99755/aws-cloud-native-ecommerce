@@ -1,23 +1,28 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "react-oidc-context";
+import { useNavigate } from "react-router-dom";
 
 const API_URL = "https://api.piyushkumartadvi.link";
 
 function Orders() {
   const auth = useAuth();
+  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState({ visible: false, message: "", onConfirm: null });
 
+  // Redirect unauthenticated users to login
+  useEffect(() => {
+    if (!auth.isAuthenticated) {
+      auth.signinRedirect();
+    }
+  }, [auth]);
+
   // Fetch orders
   const fetchOrders = async () => {
-    if (!auth.user?.access_token) {
-      setError("You must be logged in to view orders");
-      setLoading(false);
-      return;
-    }
+    if (!auth.user?.access_token) return;
 
     try {
       setLoading(true);
@@ -28,11 +33,6 @@ function Orders() {
           Authorization: `Bearer ${auth.user.access_token}`,
         },
       });
-
-      if (res.status === 401) {
-        setError("Unauthorized. Please log in again.");
-        return;
-      }
 
       if (!res.ok) throw new Error("Failed to fetch orders");
 
@@ -48,8 +48,10 @@ function Orders() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, [auth.user]);
+    if (auth.isAuthenticated) {
+      fetchOrders();
+    }
+  }, [auth.isAuthenticated, auth.user]);
 
   // Delete order
   const handleDelete = (orderId) => {
@@ -83,6 +85,7 @@ function Orders() {
     <div className="bg-white shadow p-4 rounded-lg animate-pulse h-40 mb-4"></div>
   );
 
+  if (!auth.isAuthenticated) return <p className="text-center mt-10">Redirecting to login...</p>;
   if (loading) return <div className="px-4 py-8 max-w-4xl mx-auto">{[...Array(3)].map((_, i) => <SkeletonOrder key={i} />)}</div>;
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
   if (!orders.length) return <p className="text-center mt-10">No orders yet.</p>;
