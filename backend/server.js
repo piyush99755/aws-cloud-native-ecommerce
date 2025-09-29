@@ -2,7 +2,7 @@ import express from "express";
 import cors from "cors";
 import { sendOrderConfirmation } from "./emailService.js";
 import { verifyToken, requireAdmin } from "./authMiddleware.js";
-import pg from "pg";
+import pool from "./db.js"; // make sure you have your PostgreSQL pool setup
 
 // -------------------------
 // Setup
@@ -10,26 +10,20 @@ import pg from "pg";
 const app = express();
 app.use(express.json());
 
-// CORS for frontend
+// Enable CORS for your frontend
 app.use(cors({
-  origin: "https://app.piyushkumartadvi.link",
-  credentials: true,
+  origin: "https://app.piyushkumartadvi.link", // your frontend URL
+  credentials: true, // allow cookies/headers
 }));
 
-// -------------------------
-// Database (Postgres)
-// -------------------------
-const { Pool } = pg;
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL, 
-  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
-});
+// Optional: handle preflight requests globally
+app.options("*", cors());
 
 // -------------------------
 // Orders API (Protected)
 // -------------------------
 
-// Create new order
+// Create new order (authenticated user only)
 app.post("/api/orders", verifyToken, async (req, res) => {
   try {
     const { items, total } = req.body;
@@ -58,6 +52,7 @@ app.post("/api/orders", verifyToken, async (req, res) => {
 
     const fullOrder = { ...order, items: insertedItems };
 
+    // Send confirmation email
     if (userEmail) {
       await sendOrderConfirmation(userEmail, fullOrder);
     }
@@ -71,7 +66,7 @@ app.post("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
-// Get orders for logged-in user
+// Get orders for the logged-in user
 app.get("/api/orders", verifyToken, async (req, res) => {
   try {
     const userId = req.user.sub;
@@ -110,7 +105,7 @@ app.get("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
-// Delete an order (user only)
+// Delete an order (only if it belongs to logged-in user)
 app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   const orderId = parseInt(req.params.id, 10);
   const userId = req.user.sub;
@@ -176,11 +171,11 @@ app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
 });
 
 // -------------------------
-// Start server (EB-ready)
+// Start server
 // -------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  console.log(`Server listening on port ${PORT}`);
 });
 
 export default app;
