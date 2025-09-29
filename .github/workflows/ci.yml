@@ -43,7 +43,6 @@ jobs:
         working-directory: ./backend
         run: npm install --legacy-peer-deps
 
-      # Check if server compiles/starts without crashing
       - name: Lint backend
         working-directory: ./backend
         run: npm run lint || echo "No lint script"
@@ -52,15 +51,9 @@ jobs:
         working-directory: ./backend
         run: npm run build || echo "No backend build script"
 
-      # Optional: run backend tests
       - name: Run backend tests
         working-directory: ./backend
         run: npm test -- --watchAll=false || echo "No backend tests"
 
-      # Ensure backend starts successfully
-      - name: Verify backend starts
-        working-directory: ./backend
-        run: |
-          node server.js &
-          sleep 5
-          curl -f http://localhost:3000/api/products || (echo "Backend did not start correctly" && exit 1)
+# NOTE: No attempt to start backend or connect to Postgres from GitHub Actions.
+# Backend deployment and testing will happen in CD workflow via Elastic Beanstalk.
