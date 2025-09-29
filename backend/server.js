@@ -1,6 +1,20 @@
 // server.js
+import express from "express";
+import cors from "cors";
 import { sendOrderConfirmation } from "./emailService.js";
 import { verifyToken, requireAdmin } from "./authMiddleware.js";
+
+// -------------------------
+// Setup
+// -------------------------
+const app = express();
+app.use(express.json());
+
+// Allow requests from your frontend
+app.use(cors({
+  origin: "https://app.piyushkumartadvi.link", // <-- your frontend URL
+  credentials: true, // allow sending cookies/headers
+}));
 
 // -------------------------
 // Orders API (Protected)
@@ -159,3 +173,5 @@ app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
     res.status(500).json({ error: "Failed to fetch orders" });
   }
 });
+
+export default app;
