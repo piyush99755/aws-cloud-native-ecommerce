@@ -19,7 +19,7 @@ jobs:
       EB_ENV_NAME: ecommerce-env
 
     steps:
-      # 1. Checkout repo
+      # 1. Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
