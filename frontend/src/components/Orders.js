@@ -1,172 +1,108 @@
-import React, { useState, useEffect, useCallback } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import React, { useState } from "react";
 import { useAuth } from "react-oidc-context";
+import { loadStripe } from "@stripe/stripe-js";
+import { Elements, CardElement, useStripe, useElements } from "@stripe/react-stripe-js";
 
+const stripePromise = loadStripe("pk_test_your_public_key"); // replace with your Stripe public key
 const API_URL = "https://api.piyushkumartadvi.link";
 
-function Orders() {
+function CheckoutForm({ items, total }) {
   const auth = useAuth();
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const stripe = useStripe();
+  const elements = useElements();
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-  const [modal, setModal] = useState({
-    visible: false,
-    message: "",
-    onConfirm: null,
-  });
+  const [success, setSuccess] = useState(false);
 
-  // -------------------------
-  // Fetch orders
-  // -------------------------
-  const fetchOrders = useCallback(async () => {
-    if (!auth.user?.access_token) return;
+  const handlePayment = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    if (!stripe || !elements) return;
 
     try {
-      setLoading(true);
-      const res = await fetch(`${API_URL}/api/orders`, {
-        cache: "no-store",
-        headers: { Authorization: `Bearer ${auth.user.access_token}` },
+      //  Create PaymentIntent on the server
+      const res = await fetch(`${API_URL}/api/payment/create-payment-intent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.user?.access_token}`,
+        },
+        body: JSON.stringify({
+          amount: Math.round(total * 100), // convert to cents
+          currency: "usd",
+        }),
       });
 
-      if (!res.ok) throw new Error("Failed to fetch orders");
+      if (!res.ok) throw new Error("Failed to create payment intent");
 
-      const data = await res.json();
-      setOrders(data);
-      setError(null);
+      const { clientSecret } = await res.json();
+      if (!clientSecret) throw new Error("Missing client secret from server");
+
+      //  Confirm card payment
+      const cardElement = elements.getElement(CardElement);
+      const result = await stripe.confirmCardPayment(clientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { email: auth.user?.profile?.email },
+        },
+      });
+
+      if (result.error) {
+        throw new Error(result.error.message);
+      }
+
+      if (result.paymentIntent.status !== "succeeded") {
+        throw new Error("Payment failed");
+      }
+
+      // Create order after successful payment
+      const orderRes = await fetch(`${API_URL}/api/orders`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.user?.access_token}`,
+        },
+        body: JSON.stringify({
+          items,
+          total,
+          paymentIntentId: result.paymentIntent.id,
+        }),
+      });
+
+      if (!orderRes.ok) throw new Error("Failed to create order");
+
+      setSuccess(true);
     } catch (err) {
       console.error(err);
-      setError("Error fetching orders");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  }, [auth.user?.access_token]);
-
-  useEffect(() => {
-    if (auth.isAuthenticated) {
-      fetchOrders();
-    }
-  }, [auth.isAuthenticated, fetchOrders]);
-
-  // -------------------------
-  // Delete order
-  // -------------------------
-  const handleDelete = (orderId) => {
-    setModal({
-      visible: true,
-      message: "Are you sure you want to delete this order?",
-      onConfirm: async () => {
-        try {
-          const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
-            method: "DELETE",
-            headers: { Authorization: `Bearer ${auth.user?.access_token}` },
-          });
-          if (!res.ok) throw new Error("Failed to delete order");
-
-          await fetchOrders();
-          setModal({ visible: true, message: "Order deleted successfully", onConfirm: null });
-        } catch (err) {
-          console.error(err);
-          setModal({ visible: true, message: "Failed to delete order", onConfirm: null });
-        }
-      },
-    });
   };
 
-  // -------------------------
-  // Skeleton loader component
-  // -------------------------
-  const SkeletonOrder = () => (
-    <div className="bg-white shadow p-4 rounded-lg animate-pulse h-40 mb-4"></div>
-  );
-
-  if (loading)
-    return (
-      <div className="px-4 py-8 max-w-4xl mx-auto">
-        {[...Array(3)].map((_, i) => (
-          <SkeletonOrder key={i} />
-        ))}
-      </div>
-    );
-
-  if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
-  if (!orders.length) return <p className="text-center mt-10">No orders yet.</p>;
-
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8 space-y-6">
-      <AnimatePresence>
-        {orders.map((order) => (
-          <motion.div
-            key={order.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0 }}
-            className="bg-white shadow p-4 rounded-lg"
-          >
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-semibold text-lg">Order #{order.id}</h3>
-              <button
-                onClick={() => handleDelete(order.id)}
-                className="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition"
-              >
-                Delete
-              </button>
-            </div>
-            <p>Total: ${order.total}</p>
-            <div className="mt-2 border-t pt-2 space-y-2">
-              {order.items.map((item) => (
-                <div key={item.id} className="flex justify-between items-center py-1">
-                  <div className="flex items-center space-x-2">
-                    <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
-                    <span>{item.name}</span>
-                  </div>
-                  <span>
-                    {item.quantity} × ${item.price}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </motion.div>
-        ))}
-      </AnimatePresence>
-
-      {/* Modal */}
-      {modal.visible && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50">
-          <div className="bg-white rounded-lg shadow-lg p-6 w-96 text-center">
-            <p className="mb-4">{modal.message}</p>
-            <div className="flex justify-center gap-4">
-              {modal.onConfirm ? (
-                <>
-                  <button
-                    onClick={async () => {
-                      if (modal.onConfirm) await modal.onConfirm();
-                      setModal({ visible: false, message: "", onConfirm: null });
-                    }}
-                    className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600"
-                  >
-                    Yes
-                  </button>
-                  <button
-                    onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
-                    className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                  >
-                    No
-                  </button>
-                </>
-              ) : (
-                <button
-                  onClick={() => setModal({ visible: false, message: "", onConfirm: null })}
-                  className="px-4 py-2 bg-gray-300 rounded hover:bg-gray-400"
-                >
-                  OK
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+    <form onSubmit={handlePayment} className="space-y-4">
+      <CardElement />
+      {error && <p className="text-red-500">{error}</p>}
+      {success && <p className="text-green-500">Payment successful!</p>}
+      <button
+        type="submit"
+        disabled={!stripe || loading}
+        className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+      >
+        {loading ? "Processing..." : "Pay"}
+      </button>
+    </form>
   );
 }
 
-export default Orders;
+// Wrap CheckoutForm with Elements
+export default function CheckoutWrapper({ items, total }) {
+  return (
+    <Elements stripe={stripePromise}>
+      <CheckoutForm items={items} total={total} />
+    </Elements>
+  );
+}
