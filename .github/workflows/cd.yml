@@ -19,7 +19,7 @@ jobs:
       EB_ENV_NAME: ecommerce-env
 
     steps:
-      # 1. Checkout repository
+      # 1. Checkout repo
       - name: Checkout repository
         uses: actions/checkout@v3
 
@@ -56,7 +56,7 @@ jobs:
         working-directory: ./backend
         run: npm install --legacy-peer-deps
 
-      - name: Package backend for EB
+      - name: Package backend for Elastic Beanstalk
         run: |
           cd backend
           zip -r ../backend-deploy.zip .
