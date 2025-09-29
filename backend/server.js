@@ -12,7 +12,7 @@ app.use(express.json());
 
 // Enable CORS for your frontend
 app.use(cors({
-  origin: "https://app.piyushkumartadvi.link", // your frontend URL
+  origin: "https://app.piyushkumartadvi.link", // 
   credentials: true, // allow cookies/headers
 }));
 
