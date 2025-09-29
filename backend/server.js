@@ -50,6 +50,15 @@ app.use(
   })
 );
 
+app.get('/', (req, res) => {
+  res.send('Backend is running!');
+});
+
+//health check for EB
+app.get('/health', (req, res) => {
+  res.status(200).send('OK');
+});
+
 // -------------------------
 // Products Endpoint
 // -------------------------
