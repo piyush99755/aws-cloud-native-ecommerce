@@ -1,26 +1,44 @@
 import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useAuth } from "react-oidc-context";
 
 const API_URL = "https://api.piyushkumartadvi.link";
 
 function Orders() {
+  const auth = useAuth();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modal, setModal] = useState({
-    visible: false,
-    message: "",
-    onConfirm: null,
-  });
+  const [modal, setModal] = useState({ visible: false, message: "", onConfirm: null });
 
   // Fetch orders
   const fetchOrders = async () => {
+    if (!auth.user?.access_token) {
+      setError("You must be logged in to view orders");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      const res = await fetch(`${API_URL}/api/orders`, { cache: "no-store" });
+      const res = await fetch(`${API_URL}/api/orders`, {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${auth.user.access_token}`,
+        },
+      });
+
+      if (res.status === 401) {
+        setError("Unauthorized. Please log in again.");
+        return;
+      }
+
       if (!res.ok) throw new Error("Failed to fetch orders");
+
       const data = await res.json();
       setOrders(data);
+      setError(null);
     } catch (err) {
       console.error(err);
       setError("Error fetching orders");
@@ -31,16 +49,25 @@ function Orders() {
 
   useEffect(() => {
     fetchOrders();
-  }, []);
+  }, [auth.user]);
 
+  // Delete order
   const handleDelete = (orderId) => {
     setModal({
       visible: true,
       message: "Are you sure you want to delete this order?",
       onConfirm: async () => {
         try {
-          const res = await fetch(`${API_URL}/api/orders/${orderId}`, { method: "DELETE" });
+          const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
+            method: "DELETE",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${auth.user.access_token}`,
+            },
+          });
+
           if (!res.ok) throw new Error("Failed to delete order");
+
           await fetchOrders();
           setModal({ visible: true, message: "Order deleted successfully", onConfirm: null });
         } catch (err) {
@@ -51,7 +78,7 @@ function Orders() {
     });
   };
 
-  // Skeleton loader component
+  // Skeleton loader
   const SkeletonOrder = () => (
     <div className="bg-white shadow p-4 rounded-lg animate-pulse h-40 mb-4"></div>
   );
