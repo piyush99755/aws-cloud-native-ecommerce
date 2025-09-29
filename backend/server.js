@@ -40,7 +40,7 @@ app.use(cors({
   origin: "https://app.piyushkumartadvi.link",
   credentials: true,
 }));
-app.options("*", cors());
+
 
 // -------------------------
 // Orders API
