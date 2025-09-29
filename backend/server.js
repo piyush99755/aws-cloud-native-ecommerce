@@ -17,7 +17,7 @@ const pool = new Pool({
   port: process.env.DB_PORT || 5432,
   max: 20,
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 20000,
 });
 
 // Test connection on startup
@@ -41,6 +41,16 @@ app.use(cors({
   credentials: true,
 }));
 
+//fetching products
+app.get("/api/products", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM products ORDER BY id ASC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching products:", err);
+    res.status(500).json({ error: "Failed to fetch products" });
+  }
+});
 
 // -------------------------
 // Orders API
