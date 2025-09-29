@@ -1,20 +1,26 @@
+// server.js
+import { sendOrderConfirmation } from "./emailService.js";
+import { verifyToken, requireAdmin } from "./authMiddleware.js";
+
 // -------------------------
-// Orders
+// Orders API (Protected)
 // -------------------------
 
-// Create new order
-app.post("/api/orders", async (req, res) => {
+// Create new order (authenticated user only)
+app.post("/api/orders", verifyToken, async (req, res) => {
   try {
     const { items, total } = req.body;
+    const userId = req.user.sub;     // Cognito user ID
+    const userEmail = req.user.email; // Cognito user email
 
     if (!items || !items.length) {
       return res.status(400).json({ error: "Order must include items" });
     }
 
-    // Insert order
+    // Insert order (linked to userId)
     const orderResult = await pool.query(
-      "INSERT INTO orders (total) VALUES ($1) RETURNING *",
-      [total]
+      "INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *",
+      [userId, total]
     );
     const order = orderResult.rows[0];
 
@@ -31,19 +37,99 @@ app.post("/api/orders", async (req, res) => {
 
     const fullOrder = { ...order, items: insertedItems };
 
-    console.log(" Order created:", order.id);
-    res.status(201).json({ order: fullOrder }); // <-- wrap in { order }
+    // Send confirmation email
+    if (userEmail) {
+      await sendOrderConfirmation(userEmail, fullOrder);
+    }
+
+    console.log("Order created:", order.id);
+    res.status(201).json({ order: fullOrder });
+
   } catch (err) {
-    console.error(" Error saving order:", err);
+    console.error("Error saving order:", err);
     res.status(500).json({ error: "Failed to save order" });
   }
 });
 
-// Get all orders with items
-app.get("/api/orders", async (req, res) => {
+// Get orders for the logged-in user
+app.get("/api/orders", verifyToken, async (req, res) => {
   try {
+    const userId = req.user.sub;
+
     const result = await pool.query(
       `SELECT o.id, o.total, o.created_at,
+              COALESCE(
+                json_agg(
+                  json_build_object(
+                    'id', oi.id,
+                    'product_id', oi.product_id,
+                    'quantity', oi.quantity,
+                    'price', oi.price,
+                    'name', oi.name,
+                    'image', oi.image
+                  )
+                ) FILTER (WHERE oi.id IS NOT NULL), '[]'
+              ) AS items
+       FROM orders o
+       LEFT JOIN order_items oi ON o.id = oi.order_id
+       WHERE o.user_id = $1
+       GROUP BY o.id
+       ORDER BY o.id DESC`,
+      [userId]
+    );
+
+    const orders = result.rows.map(row => ({
+      ...row,
+      items: Array.isArray(row.items) ? row.items : JSON.parse(row.items),
+    }));
+
+    res.json(orders);
+  } catch (err) {
+    console.error("Error fetching orders:", err);
+    res.status(500).json({ error: "Failed to fetch orders" });
+  }
+});
+
+// Delete an order (only if it belongs to logged-in user)
+app.delete("/api/orders/:id", verifyToken, async (req, res) => {
+  const orderId = parseInt(req.params.id, 10);
+  const userId = req.user.sub;
+
+  if (isNaN(orderId)) {
+    return res.status(400).json({ error: "Invalid order ID" });
+  }
+
+  try {
+    // Delete only if order belongs to user
+    const orderCheck = await pool.query(
+      "SELECT * FROM orders WHERE id = $1 AND user_id = $2",
+      [orderId, userId]
+    );
+
+    if (orderCheck.rowCount === 0) {
+      return res.status(403).json({ error: "Not authorized to delete this order" });
+    }
+
+    await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
+    await pool.query("DELETE FROM orders WHERE id = $1", [orderId]);
+
+    console.log("Order deleted:", orderId);
+    res.json({ success: true });
+  } catch (err) {
+    console.error("Error deleting order:", err);
+    res.status(500).json({ error: "Failed to delete order" });
+  }
+});
+
+// -------------------------
+// Admin-only Endpoints
+// -------------------------
+
+// Get ALL orders (admin only)
+app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
+  try {
+    const result = await pool.query(
+      `SELECT o.id, o.total, o.created_at, o.user_id,
               COALESCE(
                 json_agg(
                   json_build_object(
@@ -62,41 +148,14 @@ app.get("/api/orders", async (req, res) => {
        ORDER BY o.id DESC`
     );
 
-    // Ensure items is parsed as array
-    const orders = result.rows.map((row) => ({
+    const orders = result.rows.map(row => ({
       ...row,
       items: Array.isArray(row.items) ? row.items : JSON.parse(row.items),
     }));
 
     res.json(orders);
   } catch (err) {
-    console.error(" Error fetching orders:", err);
+    console.error("Error fetching all orders (admin):", err);
     res.status(500).json({ error: "Failed to fetch orders" });
-  }
-});
-
-// Delete order
-app.delete("/api/orders/:id", async (req, res) => {
-  const orderId = parseInt(req.params.id, 10);
-  if (isNaN(orderId)) {
-    return res.status(400).json({ error: "Invalid order ID" });
-  }
-
-  try {
-    await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
-    const result = await pool.query(
-      "DELETE FROM orders WHERE id = $1 RETURNING *",
-      [orderId]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({ error: "Order not found" });
-    }
-
-    console.log(" Order deleted:", orderId);
-    res.json({ success: true });
-  } catch (err) {
-    console.error(" Error deleting order:", err);
-    res.status(500).json({ error: "Failed to delete order" });
   }
 });
