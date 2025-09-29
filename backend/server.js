@@ -1,29 +1,52 @@
 import express from "express";
 import cors from "cors";
+import pkg from "pg";
 import { sendOrderConfirmation } from "./scripts/emailService.js";
 import { verifyToken, requireAdmin } from "./scripts/authMiddleware.js";
-import pool from "./db.js"; // make sure you have your PostgreSQL pool setup
+
+const { Pool } = pkg;
 
 // -------------------------
-// Setup
+// PostgreSQL Pool Setup
+// -------------------------
+const pool = new Pool({
+  host: process.env.DB_HOST || "172.31.23.209",
+  user: process.env.DB_USER || "ecommerce_user",
+  password: process.env.DB_PASS || "Born@1992",
+  database: process.env.DB_NAME || "ecommerce",
+  port: process.env.DB_PORT || 5432,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000,
+});
+
+// Test connection on startup
+pool.connect((err, client, release) => {
+  if (err) {
+    console.error("Error connecting to Postgres:", err.stack);
+  } else {
+    console.log("Postgres connected successfully!");
+    release();
+  }
+});
+
+// -------------------------
+// Express Setup
 // -------------------------
 const app = express();
 app.use(express.json());
 
-// Enable CORS for your frontend
 app.use(cors({
-  origin: "https://app.piyushkumartadvi.link", // 
-  credentials: true, // allow cookies/headers
+  origin: "https://app.piyushkumartadvi.link",
+  credentials: true,
 }));
-
-// Optional: handle preflight requests globally
 app.options("*", cors());
 
 // -------------------------
-// Orders API (Protected)
+// Orders API
 // -------------------------
 
-// Create new order (authenticated user only)
+// Create new order
 app.post("/api/orders", verifyToken, async (req, res) => {
   try {
     const { items, total } = req.body;
@@ -52,7 +75,6 @@ app.post("/api/orders", verifyToken, async (req, res) => {
 
     const fullOrder = { ...order, items: insertedItems };
 
-    // Send confirmation email
     if (userEmail) {
       await sendOrderConfirmation(userEmail, fullOrder);
     }
@@ -66,7 +88,7 @@ app.post("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
-// Get orders for the logged-in user
+// Get orders for logged-in user
 app.get("/api/orders", verifyToken, async (req, res) => {
   try {
     const userId = req.user.sub;
@@ -105,7 +127,7 @@ app.get("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
-// Delete an order (only if it belongs to logged-in user)
+// Delete order
 app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   const orderId = parseInt(req.params.id, 10);
   const userId = req.user.sub;
@@ -135,7 +157,7 @@ app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   }
 });
 
-// Admin-only: Get all orders
+// Admin: Get all orders
 app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
