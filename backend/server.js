@@ -1,9 +1,12 @@
 import express from "express";
 import cors from "cors";
 import pkg from "pg";
+import Stripe from "stripe";
+import dotenv from "dotenv";
 import { sendOrderConfirmation } from "./scripts/emailService.js";
 import { verifyToken, requireAdmin } from "./scripts/authMiddleware.js";
 
+dotenv.config();
 const { Pool } = pkg;
 
 // -------------------------
@@ -20,15 +23,19 @@ const pool = new Pool({
   connectionTimeoutMillis: 20000,
 });
 
-// Test connection on startup
+// Test connection
 pool.connect((err, client, release) => {
-  if (err) {
-    console.error("Error connecting to Postgres:", err.stack);
-  } else {
+  if (err) console.error("Error connecting to Postgres:", err.stack);
+  else {
     console.log("Postgres connected successfully!");
     release();
   }
 });
+
+// -------------------------
+// Stripe Setup
+// -------------------------
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 // -------------------------
 // Express Setup
@@ -36,12 +43,18 @@ pool.connect((err, client, release) => {
 const app = express();
 app.use(express.json());
 
-app.use(cors({
-  origin: "https://app.piyushkumartadvi.link",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: "https://app.piyushkumartadvi.link",
+    credentials: true,
+  })
+);
 
-//fetching products
+// -------------------------
+// Routes
+// -------------------------
+
+// --- Products ---
 app.get("/api/products", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM products ORDER BY id ASC");
@@ -52,20 +65,16 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-// -------------------------
-// Orders API
-// -------------------------
-
-// Create new order
+// --- Orders ---
+// Create order
 app.post("/api/orders", verifyToken, async (req, res) => {
   try {
     const { items, total } = req.body;
     const userId = req.user.sub;
     const userEmail = req.user.email;
 
-    if (!items || !items.length) {
+    if (!items || !items.length)
       return res.status(400).json({ error: "Order must include items" });
-    }
 
     const orderResult = await pool.query(
       "INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *",
@@ -85,13 +94,10 @@ app.post("/api/orders", verifyToken, async (req, res) => {
 
     const fullOrder = { ...order, items: insertedItems };
 
-    if (userEmail) {
-      await sendOrderConfirmation(userEmail, fullOrder);
-    }
+    if (userEmail) await sendOrderConfirmation(userEmail, fullOrder);
 
     console.log("Order created:", order.id);
     res.status(201).json({ order: fullOrder });
-
   } catch (err) {
     console.error("Error saving order:", err);
     res.status(500).json({ error: "Failed to save order" });
@@ -125,7 +131,7 @@ app.get("/api/orders", verifyToken, async (req, res) => {
       [userId]
     );
 
-    const orders = result.rows.map(row => ({
+    const orders = result.rows.map((row) => ({
       ...row,
       items: Array.isArray(row.items) ? row.items : JSON.parse(row.items),
     }));
@@ -142,9 +148,7 @@ app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   const orderId = parseInt(req.params.id, 10);
   const userId = req.user.sub;
 
-  if (isNaN(orderId)) {
-    return res.status(400).json({ error: "Invalid order ID" });
-  }
+  if (isNaN(orderId)) return res.status(400).json({ error: "Invalid order ID" });
 
   try {
     const orderCheck = await pool.query(
@@ -152,9 +156,8 @@ app.delete("/api/orders/:id", verifyToken, async (req, res) => {
       [orderId, userId]
     );
 
-    if (orderCheck.rowCount === 0) {
+    if (orderCheck.rowCount === 0)
       return res.status(403).json({ error: "Not authorized to delete this order" });
-    }
 
     await pool.query("DELETE FROM order_items WHERE order_id = $1", [orderId]);
     await pool.query("DELETE FROM orders WHERE id = $1", [orderId]);
@@ -190,7 +193,7 @@ app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
        ORDER BY o.id DESC`
     );
 
-    const orders = result.rows.map(row => ({
+    const orders = result.rows.map((row) => ({
       ...row,
       items: Array.isArray(row.items) ? row.items : JSON.parse(row.items),
     }));
@@ -202,8 +205,27 @@ app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
   }
 });
 
+// --- Stripe Payment Endpoint ---
+app.post("/api/payment/create-payment-intent", async (req, res) => {
+  try {
+    const { amount, currency } = req.body;
+
+    if (!amount || !currency) return res.status(400).json({ error: "Amount and currency required" });
+
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+    });
+
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("Error creating payment intent:", err);
+    res.status(500).json({ error: "Failed to create payment intent" });
+  }
+});
+
 // -------------------------
-// Start server
+// Start Server
 // -------------------------
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
