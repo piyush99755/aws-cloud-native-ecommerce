@@ -1,37 +1,31 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "react-oidc-context";
-import { useNavigate } from "react-router-dom";
 
 const API_URL = "https://api.piyushkumartadvi.link";
 
 function Orders() {
   const auth = useAuth();
-  const navigate = useNavigate();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [modal, setModal] = useState({ visible: false, message: "", onConfirm: null });
+  const [modal, setModal] = useState({
+    visible: false,
+    message: "",
+    onConfirm: null,
+  });
 
-  // Redirect unauthenticated users to login
-  useEffect(() => {
-    if (!auth.isAuthenticated) {
-      auth.signinRedirect();
-    }
-  }, [auth]);
-
+  // -------------------------
   // Fetch orders
-  const fetchOrders = async () => {
+  // -------------------------
+  const fetchOrders = useCallback(async () => {
     if (!auth.user?.access_token) return;
 
     try {
       setLoading(true);
       const res = await fetch(`${API_URL}/api/orders`, {
         cache: "no-store",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${auth.user.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${auth.user.access_token}` },
       });
 
       if (!res.ok) throw new Error("Failed to fetch orders");
@@ -45,15 +39,17 @@ function Orders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [auth.user?.access_token]);
 
   useEffect(() => {
     if (auth.isAuthenticated) {
       fetchOrders();
     }
-  }, [auth.isAuthenticated, auth.user]);
+  }, [auth.isAuthenticated, fetchOrders]);
 
+  // -------------------------
   // Delete order
+  // -------------------------
   const handleDelete = (orderId) => {
     setModal({
       visible: true,
@@ -62,12 +58,8 @@ function Orders() {
         try {
           const res = await fetch(`${API_URL}/api/orders/${orderId}`, {
             method: "DELETE",
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${auth.user.access_token}`,
-            },
+            headers: { Authorization: `Bearer ${auth.user?.access_token}` },
           });
-
           if (!res.ok) throw new Error("Failed to delete order");
 
           await fetchOrders();
@@ -80,13 +72,22 @@ function Orders() {
     });
   };
 
-  // Skeleton loader
+  // -------------------------
+  // Skeleton loader component
+  // -------------------------
   const SkeletonOrder = () => (
     <div className="bg-white shadow p-4 rounded-lg animate-pulse h-40 mb-4"></div>
   );
 
-  if (!auth.isAuthenticated) return <p className="text-center mt-10">Redirecting to login...</p>;
-  if (loading) return <div className="px-4 py-8 max-w-4xl mx-auto">{[...Array(3)].map((_, i) => <SkeletonOrder key={i} />)}</div>;
+  if (loading)
+    return (
+      <div className="px-4 py-8 max-w-4xl mx-auto">
+        {[...Array(3)].map((_, i) => (
+          <SkeletonOrder key={i} />
+        ))}
+      </div>
+    );
+
   if (error) return <p className="text-center mt-10 text-red-500">{error}</p>;
   if (!orders.length) return <p className="text-center mt-10">No orders yet.</p>;
 
@@ -118,7 +119,9 @@ function Orders() {
                     <img src={item.image} alt={item.name} className="w-12 h-12 object-cover rounded" />
                     <span>{item.name}</span>
                   </div>
-                  <span>{item.quantity} × ${item.price}</span>
+                  <span>
+                    {item.quantity} × ${item.price}
+                  </span>
                 </div>
               ))}
             </div>
