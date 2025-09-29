@@ -64,48 +64,70 @@ app.get("/api/products", async (req, res) => {
 });
 
 // -------------------------
-// Payment & Orders
+// Payment Intent Endpoint (just create intent)
 // -------------------------
 app.post("/api/payment/create-payment-intent", verifyToken, async (req, res) => {
   try {
-    const { amount, currency, items } = req.body;
-    const userId = req.user.sub;
-    const userEmail = req.user.email;
+    const { amount, currency } = req.body;
 
     if (!amount || !currency) {
       return res.status(400).json({ error: "Amount and currency required" });
     }
 
-    // 1. Create Stripe Payment Intent
     const paymentIntent = await stripe.paymentIntents.create({
       amount,
       currency,
-      metadata: { userId },
+      metadata: { userId: req.user.sub },
     });
 
-    // 2. Insert order into DB
+    console.log("PaymentIntent created:", paymentIntent.id);
+    res.json({ clientSecret: paymentIntent.client_secret });
+  } catch (err) {
+    console.error("Error creating payment intent:", err);
+    res.status(500).json({ error: "Failed to create payment intent" });
+  }
+});
+
+// -------------------------
+// Orders Endpoint (create after payment)
+// -------------------------
+app.post("/api/orders", verifyToken, async (req, res) => {
+  try {
+    const { items, total, paymentIntentId } = req.body;
+    const userId = req.user.sub;
+    const userEmail = req.user.email;
+
+    if (!items || !items.length || !total || !paymentIntentId) {
+      return res.status(400).json({ error: "Order must include items, total, and paymentIntentId" });
+    }
+
+    // 1. Verify payment succeeded
+    const paymentIntent = await stripe.paymentIntents.retrieve(paymentIntentId);
+    if (paymentIntent.status !== "succeeded") {
+      return res.status(400).json({ error: "Payment not completed" });
+    }
+
+    // 2. Insert order
     const orderResult = await pool.query(
       "INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *",
-      [userId, amount / 100] // convert cents to dollars
+      [userId, total]
     );
     const order = orderResult.rows[0];
 
     // 3. Insert order items
     const insertedItems = [];
-    if (items && items.length) {
-      for (const item of items) {
-        const itemResult = await pool.query(
-          `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
-           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-          [order.id, item.id, item.quantity, item.price, item.name, item.image || null]
-        );
-        insertedItems.push(itemResult.rows[0]);
-      }
+    for (const item of items) {
+      const itemResult = await pool.query(
+        `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
+         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+        [order.id, item.id, item.quantity, item.price, item.name, item.image || null]
+      );
+      insertedItems.push(itemResult.rows[0]);
     }
 
     const fullOrder = { ...order, items: insertedItems };
 
-    // 4. Send email after successful order creation
+    // 4. Send confirmation email
     let emailStatus = null;
     if (userEmail) {
       try {
@@ -116,19 +138,17 @@ app.post("/api/payment/create-payment-intent", verifyToken, async (req, res) => 
       }
     }
 
-    console.log("Order created and payment initiated:", order.id);
-    res.status(201).json({
-      clientSecret: paymentIntent.client_secret,
-      order: fullOrder,
-      emailStatus,
-    });
+    console.log("Order created:", order.id);
+    res.status(201).json({ order: fullOrder, emailStatus });
   } catch (err) {
-    console.error("Error processing payment or creating order:", err);
-    res.status(500).json({ error: "Failed to process payment or create order" });
+    console.error("Error creating order:", err);
+    res.status(500).json({ error: "Failed to create order" });
   }
 });
 
+// -------------------------
 // Get orders for logged-in user
+// -------------------------
 app.get("/api/orders", verifyToken, async (req, res) => {
   try {
     const userId = req.user.sub;
@@ -167,7 +187,9 @@ app.get("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
+// -------------------------
 // Delete order
+// -------------------------
 app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   const orderId = parseInt(req.params.id, 10);
   const userId = req.user.sub;
@@ -194,7 +216,9 @@ app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   }
 });
 
+// -------------------------
 // Admin: Get all orders
+// -------------------------
 app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
@@ -238,3 +262,4 @@ app.listen(PORT, () => {
 });
 
 export default app;
+
