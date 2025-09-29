@@ -51,10 +51,8 @@ app.use(
 );
 
 // -------------------------
-// Routes
+// Products Endpoint
 // -------------------------
-
-// --- Products ---
 app.get("/api/products", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM products ORDER BY id ASC");
@@ -65,42 +63,68 @@ app.get("/api/products", async (req, res) => {
   }
 });
 
-// --- Orders ---
-// Create order
-app.post("/api/orders", verifyToken, async (req, res) => {
+// -------------------------
+// Payment & Orders
+// -------------------------
+app.post("/api/payment/create-payment-intent", verifyToken, async (req, res) => {
   try {
-    const { items, total } = req.body;
+    const { amount, currency, items } = req.body;
     const userId = req.user.sub;
     const userEmail = req.user.email;
 
-    if (!items || !items.length)
-      return res.status(400).json({ error: "Order must include items" });
+    if (!amount || !currency) {
+      return res.status(400).json({ error: "Amount and currency required" });
+    }
 
+    // 1. Create Stripe Payment Intent
+    const paymentIntent = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      metadata: { userId },
+    });
+
+    // 2. Insert order into DB
     const orderResult = await pool.query(
       "INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *",
-      [userId, total]
+      [userId, amount / 100] // convert cents to dollars
     );
     const order = orderResult.rows[0];
 
+    // 3. Insert order items
     const insertedItems = [];
-    for (const item of items) {
-      const itemResult = await pool.query(
-        `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
-         VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-        [order.id, item.id, item.quantity, item.price, item.name, item.image || null]
-      );
-      insertedItems.push(itemResult.rows[0]);
+    if (items && items.length) {
+      for (const item of items) {
+        const itemResult = await pool.query(
+          `INSERT INTO order_items (order_id, product_id, quantity, price, name, image)
+           VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+          [order.id, item.id, item.quantity, item.price, item.name, item.image || null]
+        );
+        insertedItems.push(itemResult.rows[0]);
+      }
     }
 
     const fullOrder = { ...order, items: insertedItems };
 
-    if (userEmail) await sendOrderConfirmation(userEmail, fullOrder);
+    // 4. Send email after successful order creation
+    let emailStatus = null;
+    if (userEmail) {
+      try {
+        emailStatus = await sendOrderConfirmation(userEmail, fullOrder);
+      } catch (err) {
+        console.error("Email sending failed:", err.message);
+        emailStatus = { success: false, error: err.message };
+      }
+    }
 
-    console.log("Order created:", order.id);
-    res.status(201).json({ order: fullOrder });
+    console.log("Order created and payment initiated:", order.id);
+    res.status(201).json({
+      clientSecret: paymentIntent.client_secret,
+      order: fullOrder,
+      emailStatus,
+    });
   } catch (err) {
-    console.error("Error saving order:", err);
-    res.status(500).json({ error: "Failed to save order" });
+    console.error("Error processing payment or creating order:", err);
+    res.status(500).json({ error: "Failed to process payment or create order" });
   }
 });
 
@@ -202,25 +226,6 @@ app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
   } catch (err) {
     console.error("Error fetching all orders (admin):", err);
     res.status(500).json({ error: "Failed to fetch orders" });
-  }
-});
-
-// --- Stripe Payment Endpoint ---
-app.post("/api/payment/create-payment-intent", async (req, res) => {
-  try {
-    const { amount, currency } = req.body;
-
-    if (!amount || !currency) return res.status(400).json({ error: "Amount and currency required" });
-
-    const paymentIntent = await stripe.paymentIntents.create({
-      amount,
-      currency,
-    });
-
-    res.json({ clientSecret: paymentIntent.client_secret });
-  } catch (err) {
-    console.error("Error creating payment intent:", err);
-    res.status(500).json({ error: "Failed to create payment intent" });
   }
 });
 

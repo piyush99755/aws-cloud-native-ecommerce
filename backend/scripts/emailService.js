@@ -1,8 +1,12 @@
-import AWS from 'aws-sdk';
+import AWS from "aws-sdk";
 
-AWS.config.update({ region: 'us-east-1' }); // SES region
-const ses = new AWS.SES({ apiVersion: '2010-12-01' });
+AWS.config.update({ region: "us-east-1" }); // SES region
+const ses = new AWS.SES({ apiVersion: "2010-12-01" });
 
+/**
+ * Sends order confirmation email via AWS SES.
+ * Throws an error if sending fails.
+ */
 export const sendOrderConfirmation = async (toEmail, orderDetails) => {
   const params = {
     Destination: { ToAddresses: [toEmail] },
@@ -14,18 +18,20 @@ export const sendOrderConfirmation = async (toEmail, orderDetails) => {
             <p>Thank you for your purchase!</p>
             <p>Order ID: ${orderDetails.id}</p>
             <p>Total: $${orderDetails.total}</p>
-          `
-        }
+          `,
+        },
       },
-      Subject: { Data: "Your Order Confirmation" }
+      Subject: { Data: "Your Order Confirmation" },
     },
-    Source: "piyushtadvi4@gmail.com", // SES verified email
+    Source: "piyushtadvi4@gmail.com", // Must be verified in SES sandbox
   };
 
   try {
-    await ses.sendEmail(params).promise();
-    console.log("Email sent to:", toEmail);
+    const result = await ses.sendEmail(params).promise();
+    console.log("Email successfully sent to:", toEmail, "MessageId:", result.MessageId);
+    return { success: true, messageId: result.MessageId };
   } catch (err) {
     console.error("Failed to send email:", err);
+    throw new Error(`Email sending failed: ${err.message}`);
   }
 };

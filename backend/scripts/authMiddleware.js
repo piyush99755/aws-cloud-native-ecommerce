@@ -1,4 +1,3 @@
-// authMiddleware.js
 import jwt from "jsonwebtoken";
 import jwkToPem from "jwk-to-pem";
 import axios from "axios";
