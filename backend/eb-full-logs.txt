@@ -1,0 +1,3 @@
+Retrieving logs...
+Logs were saved to C:\Users\piyus\aws\aws-cloud-native-ecommerce\backend\.elasticbeanstalk\logs\250929_121234
+Logs were saved to C:\Users\piyus\aws\aws-cloud-native-ecommerce\backend\.elasticbeanstalk\logs\250929_121234

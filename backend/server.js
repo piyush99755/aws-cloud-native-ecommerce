@@ -1,8 +1,8 @@
-// server.js
 import express from "express";
 import cors from "cors";
 import { sendOrderConfirmation } from "./emailService.js";
 import { verifyToken, requireAdmin } from "./authMiddleware.js";
+import pg from "pg";
 
 // -------------------------
 // Setup
@@ -10,35 +10,42 @@ import { verifyToken, requireAdmin } from "./authMiddleware.js";
 const app = express();
 app.use(express.json());
 
-// Allow requests from your frontend
+// CORS for frontend
 app.use(cors({
-  origin: "https://app.piyushkumartadvi.link", // <-- your frontend URL
-  credentials: true, // allow sending cookies/headers
+  origin: "https://app.piyushkumartadvi.link",
+  credentials: true,
 }));
+
+// -------------------------
+// Database (Postgres)
+// -------------------------
+const { Pool } = pg;
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL, 
+  ssl: process.env.NODE_ENV === "production" ? { rejectUnauthorized: false } : false,
+});
 
 // -------------------------
 // Orders API (Protected)
 // -------------------------
 
-// Create new order (authenticated user only)
+// Create new order
 app.post("/api/orders", verifyToken, async (req, res) => {
   try {
     const { items, total } = req.body;
-    const userId = req.user.sub;     // Cognito user ID
-    const userEmail = req.user.email; // Cognito user email
+    const userId = req.user.sub;
+    const userEmail = req.user.email;
 
     if (!items || !items.length) {
       return res.status(400).json({ error: "Order must include items" });
     }
 
-    // Insert order (linked to userId)
     const orderResult = await pool.query(
       "INSERT INTO orders (user_id, total) VALUES ($1, $2) RETURNING *",
       [userId, total]
     );
     const order = orderResult.rows[0];
 
-    // Insert order items
     const insertedItems = [];
     for (const item of items) {
       const itemResult = await pool.query(
@@ -51,7 +58,6 @@ app.post("/api/orders", verifyToken, async (req, res) => {
 
     const fullOrder = { ...order, items: insertedItems };
 
-    // Send confirmation email
     if (userEmail) {
       await sendOrderConfirmation(userEmail, fullOrder);
     }
@@ -65,7 +71,7 @@ app.post("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
-// Get orders for the logged-in user
+// Get orders for logged-in user
 app.get("/api/orders", verifyToken, async (req, res) => {
   try {
     const userId = req.user.sub;
@@ -104,7 +110,7 @@ app.get("/api/orders", verifyToken, async (req, res) => {
   }
 });
 
-// Delete an order (only if it belongs to logged-in user)
+// Delete an order (user only)
 app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   const orderId = parseInt(req.params.id, 10);
   const userId = req.user.sub;
@@ -114,7 +120,6 @@ app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   }
 
   try {
-    // Delete only if order belongs to user
     const orderCheck = await pool.query(
       "SELECT * FROM orders WHERE id = $1 AND user_id = $2",
       [orderId, userId]
@@ -135,11 +140,7 @@ app.delete("/api/orders/:id", verifyToken, async (req, res) => {
   }
 });
 
-// -------------------------
-// Admin-only Endpoints
-// -------------------------
-
-// Get ALL orders (admin only)
+// Admin-only: Get all orders
 app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
   try {
     const result = await pool.query(
@@ -172,6 +173,14 @@ app.get("/api/admin/orders", verifyToken, requireAdmin, async (req, res) => {
     console.error("Error fetching all orders (admin):", err);
     res.status(500).json({ error: "Failed to fetch orders" });
   }
+});
+
+// -------------------------
+// Start server (EB-ready)
+// -------------------------
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
 
 export default app;
