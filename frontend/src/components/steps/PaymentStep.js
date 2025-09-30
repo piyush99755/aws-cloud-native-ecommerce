@@ -73,9 +73,17 @@ function PaymentStep({ nextStep, prevStep, guestMode, shippingData, setPaymentSu
 
   return (
     <div>
+      {/* Guest checkout banner */}
       {guestMode && (
         <div className="bg-yellow-100 text-yellow-800 p-3 rounded mb-4">
-          You are checking out as a guest. Sign in to save your order history.
+          You are checking out as a guest.{" "}
+          <button
+            className="underline font-medium"
+            onClick={() => auth.signinRedirect()}
+          >
+            Sign in
+          </button>{" "}
+          to save your order history.
         </div>
       )}
 
