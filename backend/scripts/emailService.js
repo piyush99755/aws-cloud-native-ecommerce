@@ -29,7 +29,7 @@ export const sendOrderConfirmation = async (toEmail, orderDetails) => {
   try {
     const result = await ses.sendEmail(params).promise();
 
-    // Debug: log full SES response
+    
     console.log("SES response:", JSON.stringify(result, null, 2));
 
     return { success: true, messageId: result.MessageId };
