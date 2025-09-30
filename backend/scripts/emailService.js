@@ -28,7 +28,10 @@ export const sendOrderConfirmation = async (toEmail, orderDetails) => {
 
   try {
     const result = await ses.sendEmail(params).promise();
-    console.log("Email successfully sent to:", toEmail, "MessageId:", result.MessageId);
+
+    // Debug: log full SES response
+    console.log("SES response:", JSON.stringify(result, null, 2));
+
     return { success: true, messageId: result.MessageId };
   } catch (err) {
     console.error("Failed to send email:", err);
