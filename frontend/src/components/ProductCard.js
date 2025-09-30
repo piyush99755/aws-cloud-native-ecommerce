@@ -13,7 +13,11 @@ const ProductCard = memo(({ product, cartItem, addToCart, decrementFromCart }) =
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0 }}
     >
-      <img src={product.image || "/placeholder.png"} alt={product.name} className="h-40 w-full object-contain mb-4" />
+      <img
+        src={product.image || "/placeholder.png"}
+        alt={product.name}
+        className="h-40 w-full object-contain mb-4"
+      />
       <h3 className="font-semibold text-lg mb-1">{product.name}</h3>
       <p className="text-gray-700 font-medium mb-4">${product.price}</p>
 
@@ -47,14 +51,17 @@ const ProductCard = memo(({ product, cartItem, addToCart, decrementFromCart }) =
 
       {cartItem && (
         <div className="mt-2 flex justify-between space-x-2">
+          {/* Secondary Action: Go to Cart */}
           <button
-            className="flex-1 bg-green-500 text-white py-1 rounded hover:bg-green-600 transition focus:outline-none focus:ring-2 focus:ring-green-600 text-sm"
+            className="flex-1 border border-blue-500 text-blue-500 py-1 rounded hover:bg-blue-50 transition focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
             onClick={() => navigate("/cart")}
           >
             Go to Cart
           </button>
+
+          {/* Primary Action: Checkout */}
           <button
-            className="flex-1 bg-yellow-500 text-white py-1 rounded hover:bg-yellow-600 transition focus:outline-none focus:ring-2 focus:ring-yellow-500 text-sm"
+            className="flex-1 bg-blue-500 text-white py-1 rounded hover:bg-blue-600 transition focus:outline-none focus:ring-2 focus:ring-blue-600 text-sm"
             onClick={() => navigate("/checkout")}
           >
             Checkout
