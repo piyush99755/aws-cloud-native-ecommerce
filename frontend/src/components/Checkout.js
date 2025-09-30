@@ -6,6 +6,7 @@ import { useAuth } from "react-oidc-context";
 import CheckoutItem from "./CheckoutItem";
 import SkeletonCheckoutItem from "./SkeletonCheckoutItem";
 import PaymentForm from "./PaymentForm";
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_URL = "https://api.piyushkumartadvi.link";
 
@@ -20,7 +21,6 @@ function Checkout({ guestMode }) {
   const [loadingItems, setLoadingItems] = useState(true);
   const [message, setMessage] = useState("");
 
-  // Calculate total as a number
   const total = cart.reduce((sum, item) => sum + Number(item.price) * Number(item.quantity), 0);
 
   useEffect(() => {
@@ -34,7 +34,6 @@ function Checkout({ guestMode }) {
 
   const handlePay = async () => {
     if (!stripe || !elements) return;
-
     const amountInCents = Math.round(total * 100);
     if (isNaN(amountInCents) || amountInCents <= 0) {
       setMessage("Invalid payment amount.");
@@ -45,7 +44,6 @@ function Checkout({ guestMode }) {
     setMessage("");
 
     try {
-      // Create PaymentIntent
       const res = await fetch(`${API_URL}/api/payment/create-payment-intent`, {
         method: "POST",
         headers: {
@@ -63,7 +61,6 @@ function Checkout({ guestMode }) {
       const { clientSecret } = await res.json();
       if (!clientSecret) throw new Error("Missing client secret from server");
 
-      // Confirm card payment
       const result = await stripe.confirmCardPayment(clientSecret, {
         payment_method: {
           card: elements.getElement(CardElement),
@@ -71,16 +68,12 @@ function Checkout({ guestMode }) {
         },
       });
 
-      if (result.error) {
-        throw new Error(result.error.message);
-      }
+      if (result.error) throw new Error(result.error.message);
 
       if (result.paymentIntent.status === "succeeded") {
         setMessage("Payment successful!");
-
         if (!guestMode) {
-          // Create order on backend
-          const orderRes = await fetch(`${API_URL}/api/orders`, {
+          await fetch(`${API_URL}/api/orders`, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
@@ -92,13 +85,7 @@ function Checkout({ guestMode }) {
               paymentIntentId: result.paymentIntent.id,
             }),
           });
-
-          if (!orderRes.ok) {
-            const errorData = await orderRes.json();
-            console.error("Order creation failed:", errorData);
-          }
         }
-
         clearCart();
         navigate("/orders");
       }
@@ -114,24 +101,45 @@ function Checkout({ guestMode }) {
     <div className="max-w-4xl mx-auto px-4 py-8">
       <h2 className="text-3xl font-bold mb-6">Checkout</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-        {loadingItems
-          ? [...Array(cart.length || 3)].map((_, i) => <SkeletonCheckoutItem key={i} />)
-          : cart.map((item) => <CheckoutItem key={item.id} item={item} />)}
-      </div>
+      <AnimatePresence>
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          layout
+        >
+          {loadingItems
+            ? [...Array(cart.length || 3)].map((_, i) => <SkeletonCheckoutItem key={i} />)
+            : cart.map((item) => <CheckoutItem key={item.id} item={item} />)}
+        </motion.div>
+      </AnimatePresence>
 
       <h3 className="text-xl font-bold mb-4">Total: ${total.toFixed(2)}</h3>
 
-      <PaymentForm onPay={handlePay} loading={loading} stripeReady={!!stripe} />
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0 }}
+      >
+        <PaymentForm
+          onPay={handlePay}
+          loading={loading}
+          stripeReady={!!stripe}
+        />
+      </motion.div>
 
       {message && (
-        <p
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
           className={`mt-4 ${
             message.toLowerCase().includes("success") ? "text-green-600" : "text-red-500"
           }`}
+          role="alert"
         >
           {message}
-        </p>
+        </motion.p>
       )}
     </div>
   );

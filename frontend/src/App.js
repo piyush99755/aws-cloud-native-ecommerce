@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Routes, Route, useNavigate, Navigate, useLocation } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import Products from "./components/Products";
 import Cart from "./components/Cart";
 import Checkout from "./components/Checkout";
@@ -15,16 +16,14 @@ import "./styles/components.css";
 
 const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
 
-// Wrapper for guest-restricted routes (checkout/orders)
-const GuestRestrictedRoute = ({ isAuthenticated, message, children }) => {
-  return isAuthenticated ? (
+const GuestRestrictedRoute = ({ isAuthenticated, message, children }) =>
+  isAuthenticated ? (
     children
   ) : (
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <p className="text-lg text-gray-700 text-center">{message}</p>
     </div>
   );
-};
 
 function App() {
   const auth = useAuth();
@@ -38,12 +37,9 @@ function App() {
 
   const isUser = auth.isAuthenticated || guestMode;
 
-  // Redirect authenticated users from "/" to "/products"
   useEffect(() => {
     if (!auth.isLoading && auth.isAuthenticated && auth.user) {
-      if (location.pathname === "/") {
-        navigate("/products", { replace: true });
-      }
+      if (location.pathname === "/") navigate("/products", { replace: true });
       setGuestMode(false);
       localStorage.setItem("guestMode", false);
     }
@@ -56,8 +52,7 @@ function App() {
 
     const clientId = "1hbjetddcmf4hp5cmpl5tae8l9";
     const logoutUri = "https://app.piyushkumartadvi.link";
-    const cognitoDomain =
-      "https://us-east-1zylluw6ax.auth.us-east-1.amazoncognito.com";
+    const cognitoDomain = "https://us-east-1zylluw6ax.auth.us-east-1.amazoncognito.com";
 
     window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(
       logoutUri
@@ -76,13 +71,12 @@ function App() {
     navigate("/products", { replace: true });
   };
 
-  if (auth.isLoading) {
+  if (auth.isLoading)
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <p className="text-xl font-semibold text-gray-700 animate-pulse">Redirecting...</p>
       </div>
     );
-  }
 
   if (auth.error) return <div>Error: {auth.error.message}</div>;
 
@@ -90,65 +84,46 @@ function App() {
     <Elements stripe={stripePromise}>
       <CartProvider>
         <div className="min-h-screen bg-gray-50">
-          <Navbar
-            isAuthenticated={isUser}
-            user={auth.user}
-            onSignIn={handleSignIn}
-            onSignOut={handleSignOut}
-          />
+          <Navbar isAuthenticated={isUser} user={auth.user} onSignIn={handleSignIn} onSignOut={handleSignOut} />
 
           <main className="max-w-6xl mx-auto px-4">
-            <Routes>
-              {/* Landing or redirect */}
-              <Route
-                path="/"
-                element={
-                  isUser ? (
-                    <Navigate to="/products" replace />
-                  ) : (
-                    <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
-                  )
-                }
-              />
-
-              {/* Products accessible to everyone */}
-              <Route path="/products" element={<Products guestMode={guestMode} />} />
-
-              {/* Cart accessible to both guests and authenticated */}
-              <Route
-                path="/cart"
-                element={isUser ? <Cart guestMode={guestMode} /> : <Navigate to="/" replace />}
-              />
-
-              {/* Checkout restricted to authenticated only */}
-              <Route
-                path="/checkout"
-                element={
-                  <GuestRestrictedRoute
-                    isAuthenticated={auth.isAuthenticated}
-                    message="Please sign in to proceed to checkout."
-                  >
-                    <Checkout guestMode={guestMode} />
-                  </GuestRestrictedRoute>
-                }
-              />
-
-              {/* Orders restricted to authenticated only */}
-              <Route
-                path="/orders"
-                element={
-                  <GuestRestrictedRoute
-                    isAuthenticated={auth.isAuthenticated}
-                    message="Please sign in to view your orders."
-                  >
-                    <Orders />
-                  </GuestRestrictedRoute>
-                }
-              />
-
-              {/* Catch-all */}
-              <Route path="*" element={<Navigate to="/" replace />} />
-            </Routes>
+            <AnimatePresence exitBeforeEnter>
+              <motion.div
+                key={location.pathname}
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Routes location={location} key={location.pathname}>
+                  <Route
+                    path="/"
+                    element={
+                      isUser ? <Navigate to="/products" replace /> : <LandingPage onSignIn={handleSignIn} onGuestMode={handleGuestMode} />
+                    }
+                  />
+                  <Route path="/products" element={<Products guestMode={guestMode} />} />
+                  <Route path="/cart" element={isUser ? <Cart guestMode={guestMode} /> : <Navigate to="/" replace />} />
+                  <Route
+                    path="/checkout"
+                    element={
+                      <GuestRestrictedRoute isAuthenticated={auth.isAuthenticated} message="Please sign in to proceed to checkout.">
+                        <Checkout guestMode={guestMode} />
+                      </GuestRestrictedRoute>
+                    }
+                  />
+                  <Route
+                    path="/orders"
+                    element={
+                      <GuestRestrictedRoute isAuthenticated={auth.isAuthenticated} message="Please sign in to view your orders.">
+                        <Orders />
+                      </GuestRestrictedRoute>
+                    }
+                  />
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </motion.div>
+            </AnimatePresence>
           </main>
         </div>
       </CartProvider>

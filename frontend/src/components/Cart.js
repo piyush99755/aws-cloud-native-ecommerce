@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { useCart } from "./CartContext";
 import CartItem from "./CartItem";
-
+import { motion, AnimatePresence } from "framer-motion";
 
 function Cart({ guestMode }) {
   const { cart, addToCart, decrementFromCart, removeFromCart, isEmpty } = useCart();
@@ -22,17 +22,32 @@ function Cart({ guestMode }) {
       {isEmpty ? (
         <p className="text-gray-700">Your cart is empty.</p>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {cart.map((item) => (
-            <CartItem
-              key={item.id}
-              item={item}
-              addToCart={addToCart}
-              decrementFromCart={decrementFromCart}
-              removeFromCart={removeFromCart}
-            />
-          ))}
-        </div>
+        <AnimatePresence>
+          <motion.div
+            className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            layout
+          >
+            {cart.map((item) => (
+              <motion.div
+                key={item.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                layout
+              >
+                <CartItem
+                  item={item}
+                  addToCart={addToCart}
+                  decrementFromCart={decrementFromCart}
+                  removeFromCart={removeFromCart}
+                />
+              </motion.div>
+            ))}
+          </motion.div>
+        </AnimatePresence>
       )}
 
       {!isEmpty && (
@@ -40,7 +55,8 @@ function Cart({ guestMode }) {
           <h3 className="text-xl font-bold mb-2">Total: ${total.toFixed(2)}</h3>
           <Link
             to="/checkout"
-            className="inline-block bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition"
+            className="inline-block bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 transition focus:outline-none focus:ring-2 focus:ring-green-600"
+            aria-label="Proceed to checkout"
           >
             Proceed to Checkout
           </Link>
