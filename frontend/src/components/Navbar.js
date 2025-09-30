@@ -27,7 +27,7 @@ function Navbar({ isAuthenticated, user, onSignIn, onSignOut }) {
           className="flex items-center space-x-2 cursor-pointer"
           onClick={() => navigate("/")}
         >
-          <img src={logo} alt="Brand Logo" className="h-8 w-8 object-contain" />
+          <img src={logo} alt="Brand Logo" className="h-10 w-10 object-contain" />
           <h1 className="text-2xl font-bold text-blue-600 tracking-wide">
             Cloud <span className="text-gray-800">E-Commerce</span>
           </h1>
